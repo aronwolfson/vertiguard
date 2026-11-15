@@ -726,9 +726,12 @@
         const map = L.map("map", {
           zoomControl: true,
           preferCanvas: true,
+          zoomAnimation: false,
           dragging: true,
           scrollWheelZoom: true,
         }).setView(TAMPA, 9);
+        requestAnimationFrame(() => map.invalidateSize());
+        document.fonts.ready.then(() => map.invalidateSize());
         const svgRenderer = L.svg({ padding: 0.5 });
         const darkBasemap = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
@@ -776,7 +779,11 @@
         darkBasemapButton.addEventListener("click", () => setBasemap("dark"));
         satelliteBasemapButton.addEventListener("click", () => setBasemap("satellite"));
         if (localStorage.getItem("vg_basemap") === "satellite") setBasemap("satellite", false);
-        window.addEventListener("resize", () => map.invalidateSize());
+        let mapResizeTimer;
+        window.addEventListener("resize", () => {
+          clearTimeout(mapResizeTimer);
+          mapResizeTimer = setTimeout(() => map.invalidateSize(), 150);
+        });
 
         const aircraftIcon = L.divIcon({
           className: "aircraft-icon",
