@@ -3,12 +3,10 @@ const fs = require("node:fs");
 const WebSocket = require("ws");
 
 const SAMPLE_INTERVAL_MS = 200;
-const PORT = 8080;
-const HTTP_PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const METERS_PER_NAUTICAL_MILE = 1852;
 const METERS_PER_DEGREE_LATITUDE = 111320;
 
-const server = new WebSocket.Server({ port: PORT });
 const allowedFaults = new Set(["motor_overheat", "battery_sag", "gps_drift"]);
 const activeFaults = new Set();
 const dashboardServer = http.createServer((request, response) => {
@@ -33,8 +31,9 @@ const dashboardServer = http.createServer((request, response) => {
     response.end(contents);
   });
 });
-dashboardServer.listen(HTTP_PORT, "127.0.0.1", () => {
-  console.log(`Dashboard available at http://localhost:${HTTP_PORT}`);
+const server = new WebSocket.Server({ server: dashboardServer });
+dashboardServer.listen(PORT, "0.0.0.0", () => {
+  console.log(`Dashboard available at http://localhost:${PORT}`);
 });
 
 const state = {
