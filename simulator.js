@@ -263,8 +263,6 @@ async function createOperatorBriefing(snapshot) {
     return { briefing: buildTemplateBriefing(snapshot), source: "template" };
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
   try {
     const prompt = [
       "You are an aviation operations safety analyst. Given the snapshot, return ONLY JSON with this shape:",
@@ -272,40 +270,53 @@ async function createOperatorBriefing(snapshot) {
       "Use these time-budget guides: 100–110°C ≈ 8 minutes, 110–120°C ≈ 5 minutes, above 120°C ≈ 2 minutes. Do not return markdown or additional properties.",
       `Snapshot: ${JSON.stringify(snapshot)}`,
     ].join("\n");
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.4,
+    const models = ["gemini-3.6-flash", "gemini-flash-latest"];
+    for (const model of models) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": apiKey,
+            },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                responseMimeType: "application/json",
+                temperature: 0.4,
+                thinkingConfig: { thinkingBudget: 0 },
+              },
+            }),
+            signal: controller.signal,
           },
-        }),
-        signal: controller.signal,
-      },
-    );
-    if (!response.ok) throw new Error(`Gemini request failed with status ${response.status}.`);
-    const result = await response.json();
-    const parts = result.candidates?.[0]?.content?.parts;
-    const text = Array.isArray(parts)
-      ? parts
-          .filter((part) => part?.thought !== true && typeof part?.text === "string")
-          .map((part) => part.text)
-          .join("")
-      : "";
-    if (!text) throw new Error("Gemini response did not contain briefing JSON.");
-    return { briefing: validateBriefing(JSON.parse(text)), source: "Gemini" };
+        );
+        if (response.status === 404) {
+          console.log(`Model ${model} unavailable, trying next`);
+          continue;
+        }
+        if (!response.ok) throw new Error(`Gemini request failed with status ${response.status}.`);
+        const result = await response.json();
+        const parts = result.candidates?.[0]?.content?.parts;
+        const text = Array.isArray(parts)
+          ? parts
+              .filter((part) => part?.thought !== true && typeof part?.text === "string")
+              .map((part) => part.text)
+              .join("")
+          : "";
+        if (!text) throw new Error("Gemini response did not contain briefing JSON.");
+        return { briefing: validateBriefing(JSON.parse(text)), source: `Gemini (${model})` };
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+    throw new Error("All Gemini models are unavailable.");
   } catch (error) {
     console.error("Gemini briefing failed:", error.message);
     return { briefing: buildTemplateBriefing(snapshot), source: "template" };
-  } finally {
-    clearTimeout(timeout);
   }
 }
 

@@ -224,7 +224,7 @@
       .basemap-button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
       .map-column { min-height: 0; display: flex; flex-direction: column; gap: 10px; }
       .map-panel { min-height: 0; flex: 1; display: flex; flex-direction: column; }
-      #map { min-height: 320px; width: 100%; flex: 1; background: #0a0b0c; }
+      #map { min-height: 320px; width: 100%; flex: 1; background: #11161b; }
 
       .control-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 10px; }
       .simulator-control {
@@ -252,7 +252,7 @@
       .simulator-control.is-active { border-color: var(--red); border-width: 2px; color: var(--red); }
       .simulator-control.is-active span, .simulator-control.is-active strong { color: var(--red); }
 
-      .leaflet-container { font-family: var(--mono); background: #0a0b0c; }
+      .leaflet-container { font-family: var(--mono); background: #11161b; }
       .dark-tiles .leaflet-tile, .leaflet-tile.dark-tiles {
         filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92) saturate(0.55);
       }
@@ -728,6 +728,7 @@
           zoomControl: true,
           preferCanvas: true,
           zoomAnimation: false,
+          fadeAnimation: true,
           wheelPxPerZoomLevel: 120,
           zoomDelta: 0.5,
           zoomSnap: 0.5,
@@ -739,6 +740,7 @@
         const svgRenderer = L.svg({ padding: 0.5 });
         const darkBasemap = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
+          keepBuffer: 4,
           className: "dark-tiles",
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
         });
@@ -747,6 +749,7 @@
           "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
           {
             maxZoom: 19,
+            keepBuffer: 4,
             attribution: "Tiles &copy; Esri",
           },
         );
