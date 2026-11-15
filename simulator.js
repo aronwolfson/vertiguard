@@ -60,6 +60,8 @@ const faultEffects = {
   gpsDriftMeters: 0,
   gpsDriftBearingRadians: 0,
 };
+let breachEpisodeNumber = 0;
+let activeBreachEpisode = null;
 
 let lastUpdateMs = Date.now();
 let nextTargetChangeMs = lastUpdateMs;
@@ -198,15 +200,146 @@ function update(deltaSeconds, nowMs) {
   };
 }
 
+function broadcast(message) {
+  const messageJson = JSON.stringify(message);
+  for (const client of server.clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(messageJson);
+    }
+  }
+}
+
+function buildTemplateBriefing(snapshot) {
+  const temperature = snapshot.temp_c;
+  const severity = temperature >= 110 ? "CRITICAL" : "WARNING";
+  const recommendedAction =
+    temperature > 120
+      ? "Initiate an immediate controlled landing and follow the approved emergency checklist."
+      : temperature >= 110
+        ? "Begin a controlled landing using the approved emergency checklist."
+        : "Monitor the motor and prepare a controlled landing under the approved checklist.";
+  const timeBudget =
+    temperature > 120
+      ? "Land within 2 minutes"
+      : temperature >= 110
+        ? "Land within 5 minutes"
+        : "Land within 8 minutes";
+
+  return {
+    severity,
+    summary: `Motor ${String(snapshot.motor).padStart(2, "0")} is at ${temperature.toFixed(1)}°C with ${Math.round(snapshot.rpm)} RPM; battery is ${snapshot.battery_pct.toFixed(1)}%.`,
+    recommended_action: recommendedAction,
+    time_budget: timeBudget,
+  };
+}
+
+function validateBriefing(briefing) {
+  if (
+    !briefing ||
+    !["WARNING", "CRITICAL"].includes(briefing.severity) ||
+    typeof briefing.summary !== "string" ||
+    typeof briefing.recommended_action !== "string" ||
+    typeof briefing.time_budget !== "string" ||
+    briefing.summary.trim().split(/\s+/).length > 25 ||
+    briefing.recommended_action.trim().split(/\s+/).length > 20 ||
+    !briefing.summary.trim() ||
+    !briefing.recommended_action.trim() ||
+    !briefing.time_budget.trim()
+  ) {
+    throw new Error("Gemini returned an invalid operator briefing.");
+  }
+
+  return {
+    severity: briefing.severity,
+    summary: briefing.summary.trim(),
+    recommended_action: briefing.recommended_action.trim(),
+    time_budget: briefing.time_budget.trim(),
+  };
+}
+
+async function createOperatorBriefing(snapshot) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || typeof fetch !== "function") {
+    return { briefing: buildTemplateBriefing(snapshot), source: "template" };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const prompt = [
+      "You are an aviation operations safety analyst. Given the snapshot, return ONLY JSON with this shape:",
+      '{"severity":"WARNING" or "CRITICAL","summary":"plain-English what is wrong, max 25 words","recommended_action":"imperative instruction, max 20 words","time_budget":"like Land within 6 minutes"}',
+      "Use these time-budget guides: 100–110°C ≈ 8 minutes, 110–120°C ≈ 5 minutes, above 120°C ≈ 2 minutes. Do not return markdown or additional properties.",
+      `Snapshot: ${JSON.stringify(snapshot)}`,
+    ].join("\n");
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.4,
+          },
+        }),
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok) throw new Error(`Gemini request failed with status ${response.status}.`);
+    const result = await response.json();
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (typeof text !== "string") throw new Error("Gemini response did not contain briefing JSON.");
+    return { briefing: validateBriefing(JSON.parse(text)), source: "Gemini" };
+  } catch {
+    return { briefing: buildTemplateBriefing(snapshot), source: "template" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function observeBreach(telemetry) {
+  const motorIndex = telemetry.motor_temps_c.findIndex((temperature) => temperature > 100);
+  if (motorIndex === -1) {
+    activeBreachEpisode = null;
+    return;
+  }
+  if (activeBreachEpisode !== null) return;
+
+  const episode = ++breachEpisodeNumber;
+  activeBreachEpisode = episode;
+  const snapshot = {
+    motor: motorIndex + 1,
+    temp_c: telemetry.motor_temps_c[motorIndex],
+    rpm: telemetry.motor_rpm[motorIndex],
+    battery_pct: telemetry.battery_pct,
+    altitude_ft: telemetry.altitude_ft,
+    airspeed_kt: telemetry.airspeed_kt,
+    wind_kt: telemetry.wind_kt,
+  };
+
+  void createOperatorBriefing(snapshot).then(({ briefing, source }) => {
+    console.log(`Operator briefing source: ${source}`);
+    if (activeBreachEpisode !== episode) return;
+    broadcast({ type: "briefing", motor: snapshot.motor, briefing });
+  });
+}
+
 setInterval(() => {
   const nowMs = Date.now();
   const deltaSeconds = Math.max(0, (nowMs - lastUpdateMs) / 1000);
   lastUpdateMs = nowMs;
-  const telemetryJson = JSON.stringify(update(deltaSeconds, nowMs));
+  const telemetry = update(deltaSeconds, nowMs);
+  const telemetryJson = JSON.stringify(telemetry);
   console.log(telemetryJson);
   for (const client of server.clients) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(telemetryJson);
     }
   }
+  observeBreach(telemetry);
 }, SAMPLE_INTERVAL_MS);

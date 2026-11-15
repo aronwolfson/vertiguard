@@ -416,7 +416,17 @@
       .active-alert.is-active.unacknowledged .alert-acknowledge { display: block; }
       .active-alert.is-active { border-left-color: var(--red); background: #1c0e0f; }
       .active-alert.is-active .alert-label { color: var(--red); }
-      .active-alert.is-active .alert-content { align-items: flex-start; color: var(--text); font-weight: 600; }
+      .active-alert.is-active .alert-content { min-height: 0; align-items: flex-start; color: var(--text); font-weight: 600; }
+      .operator-briefing { display: none; margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 9px; line-height: 1.3; }
+      .operator-briefing.is-visible { display: block; }
+      .operator-briefing [hidden] { display: none; }
+      .briefing-title { margin-bottom: 3px; color: var(--steel); font-family: var(--cond); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; }
+      .briefing-generating { color: var(--muted); font-family: var(--cond); font-weight: 700; letter-spacing: 0.08em; }
+      .briefing-details { display: grid; gap: 2px; overflow-wrap: anywhere; }
+      .briefing-severity { font-family: var(--cond); font-weight: 700; letter-spacing: 0.1em; }
+      .briefing-severity.warning { color: var(--amber); }
+      .briefing-severity.critical { color: var(--red); }
+      .briefing-key { color: var(--steel); font-family: var(--cond); font-weight: 700; letter-spacing: 0.08em; }
       @keyframes hard-alert-blink {
         0%, 49% { border-left-color: var(--red); }
         50%, 100% { border-left-color: transparent; }
@@ -495,6 +505,8 @@
         .event-layout { grid-template-columns: minmax(180px, 0.8fr) minmax(0, 2fr); }
         .active-alert { padding: 10px; }
         .alert-content { min-height: 32px; font-size: 10px; }
+        .operator-briefing { margin-top: 3px; padding-top: 3px; font-size: 8px; }
+        .briefing-title { margin-bottom: 2px; font-size: 10px; }
         .event-list-wrap { padding: 6px 10px; }
         .map-heading-actions { gap: 5px; }
         .map-readout { gap: 5px; }
@@ -524,6 +536,8 @@
         .event-panel { flex-basis: 132px; }
         .event-layout { grid-template-columns: minmax(120px, 0.8fr) minmax(0, 2fr); }
         .active-alert { padding: 7px; }
+        .operator-briefing { font-size: 7px; }
+        .briefing-title { font-size: 9px; }
         .event-list-wrap { padding: 5px 7px; }
         .event-item { flex-direction: column; gap: 2px; padding: 3px 0; font-size: 8px; }
         .event-time { font-size: 8px; }
@@ -676,6 +690,16 @@
             <div class="alert-label">Active alert</div>
             <div id="alert-content" class="alert-content">NO ACTIVE BREACH — ALL MOTORS WITHIN LIMITS</div>
             <div class="alert-acknowledge">CLICK TO ACKNOWLEDGE</div>
+            <div id="operator-briefing" class="operator-briefing" aria-live="polite">
+              <div class="briefing-title">OPERATOR BRIEFING</div>
+              <div id="briefing-generating" class="briefing-generating" hidden>GENERATING BRIEFING…</div>
+              <div id="briefing-details" class="briefing-details" hidden>
+                <div id="briefing-severity" class="briefing-severity"></div>
+                <div id="briefing-summary"></div>
+                <div><span class="briefing-key">ACTION — </span><span id="briefing-action"></span></div>
+                <div><span class="briefing-key">TIME BUDGET — </span><span id="briefing-time-budget"></span></div>
+              </div>
+            </div>
           </div>
           <div class="event-list-wrap">
             <h3 class="event-list-title">Recent events</h3>
@@ -705,6 +729,7 @@
           dragging: true,
           scrollWheelZoom: true,
         }).setView(TAMPA, 9);
+        const svgRenderer = L.svg({ padding: 0.5 });
         const darkBasemap = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
           className: "dark-tiles",
@@ -772,7 +797,13 @@
         const aircraft = L.marker(TAMPA, { icon: aircraftIcon, zIndexOffset: 1000 })
           .addTo(map)
           .bindTooltip("VG-01", { direction: "top", offset: [0, -18] });
-        const trail = L.polyline([], { color: "#62a8c4", weight: 3, opacity: 0.78, lineCap: "round" }).addTo(map);
+        const trail = L.polyline([], {
+          color: "#62a8c4",
+          weight: 3,
+          opacity: 0.78,
+          lineCap: "round",
+          renderer: svgRenderer,
+        }).addTo(map);
         const trailPoints = [];
         const motorCards = [...document.querySelectorAll(".motor-card")];
         const controlButtons = [...document.querySelectorAll(".simulator-control")];
@@ -780,6 +811,13 @@
         const eventList = document.getElementById("event-list");
         const eventPanel = document.querySelector(".event-panel");
         const activeAlert = document.getElementById("active-alert");
+        const operatorBriefing = document.getElementById("operator-briefing");
+        const briefingGenerating = document.getElementById("briefing-generating");
+        const briefingDetails = document.getElementById("briefing-details");
+        const briefingSeverity = document.getElementById("briefing-severity");
+        const briefingSummary = document.getElementById("briefing-summary");
+        const briefingAction = document.getElementById("briefing-action");
+        const briefingTimeBudget = document.getElementById("briefing-time-budget");
         const gpsWarning = document.getElementById("gps-warning");
         const connection = document.getElementById("connection");
         const connectionText = document.getElementById("connection-text");
@@ -793,6 +831,8 @@
         };
         let soundArmed = localStorage.getItem("vg_sound_armed") === "true";
         let audioContext;
+        let alarmBus;
+        let alarmCompressor;
         let notificationsEnabled =
           localStorage.getItem("vg_alerts_enabled") === "true" &&
           "Notification" in window &&
@@ -830,6 +870,7 @@
             if (!soundArmed) return;
             try {
               await ensureAudioContext().resume();
+              ensureAlarmBus();
             } catch (error) {
               console.error("Unable to resume stored alarm sound:", error);
             }
@@ -843,6 +884,8 @@
             soundArmed = false;
             localStorage.setItem("vg_sound_armed", "false");
             updateAttentionToggle(soundToggle, false, "SOUND: ARMED", "ARM SOUND");
+            if (alarmBus && audioContext) alarmBus.gain.setValueAtTime(0, audioContext.currentTime);
+            clearAlarmRepeat();
             return;
           }
 
@@ -851,6 +894,11 @@
             soundArmed = true;
             localStorage.setItem("vg_sound_armed", "true");
             updateAttentionToggle(soundToggle, true, "SOUND: ARMED", "ARM SOUND");
+            ensureAlarmBus();
+            if (breachActive && !breachAcknowledged) {
+              playBreachAlarm();
+              startAlarmRepeat();
+            }
           } catch (error) {
             soundArmed = false;
             localStorage.setItem("vg_sound_armed", "false");
@@ -876,27 +924,50 @@
             notificationsEnabled = permission === "granted";
             localStorage.setItem("vg_alerts_enabled", String(notificationsEnabled));
             updateAttentionToggle(notificationsToggle, notificationsEnabled, "ALERTS: ON", "ENABLE ALERTS");
+            if (notificationsEnabled) {
+              notifyBreach("Alerts enabled. Breach notifications will appear here.");
+            }
           } catch (error) {
             console.error("Unable to request notification permission:", error);
           }
         });
 
+        function ensureAlarmBus() {
+          const context = ensureAudioContext();
+          if (!alarmBus || alarmBus.context !== context) {
+            alarmBus = context.createGain();
+            alarmCompressor = context.createDynamicsCompressor();
+            alarmCompressor.threshold.setValueAtTime(-12, context.currentTime);
+            alarmCompressor.knee.setValueAtTime(0, context.currentTime);
+            alarmCompressor.ratio.setValueAtTime(12, context.currentTime);
+            alarmCompressor.attack.setValueAtTime(0.003, context.currentTime);
+            alarmCompressor.release.setValueAtTime(0.12, context.currentTime);
+            alarmBus.connect(alarmCompressor);
+            alarmCompressor.connect(context.destination);
+          }
+          alarmBus.gain.setValueAtTime(soundArmed ? 0.5 : 0, context.currentTime);
+          return alarmBus;
+        }
+
+        function clearAlarmRepeat() {
+          clearInterval(alarmRepeatTimer);
+          alarmRepeatTimer = undefined;
+        }
+
+        function startAlarmRepeat() {
+          clearAlarmRepeat();
+          if (soundArmed && breachActive && !breachAcknowledged) {
+            alarmRepeatTimer = setInterval(playBreachAlarm, 8000);
+          }
+        }
+
         function playBreachAlarm() {
           if (!soundArmed || !audioContext || audioContext.state !== "running") return;
           const startTime = audioContext.currentTime;
-          const gain = audioContext.createGain();
-          const compressor = audioContext.createDynamicsCompressor();
+          const bus = ensureAlarmBus();
           const switchInterval = 0.18;
           const warbleCycles = 6;
           const duration = switchInterval * warbleCycles * 2;
-          gain.gain.setValueAtTime(0.5, startTime);
-          compressor.threshold.setValueAtTime(-12, startTime);
-          compressor.knee.setValueAtTime(0, startTime);
-          compressor.ratio.setValueAtTime(12, startTime);
-          compressor.attack.setValueAtTime(0.003, startTime);
-          compressor.release.setValueAtTime(0.12, startTime);
-          gain.connect(compressor);
-          compressor.connect(audioContext.destination);
 
           for (const detune of [0, 8]) {
             const oscillator = audioContext.createOscillator();
@@ -905,7 +976,7 @@
               const frequency = step % 2 === 0 ? 960 : 720;
               oscillator.frequency.setValueAtTime(frequency + detune, startTime + step * switchInterval);
             }
-            oscillator.connect(gain);
+            oscillator.connect(bus);
             oscillator.start(startTime);
             oscillator.stop(startTime + duration);
           }
@@ -915,8 +986,7 @@
           if (!breachActive || breachAcknowledged) return;
           breachAcknowledged = true;
           activeAlert.classList.remove("unacknowledged");
-          clearInterval(alarmRepeatTimer);
-          alarmRepeatTimer = undefined;
+          clearAlarmRepeat();
         });
 
         function notifyBreach(message) {
@@ -956,6 +1026,57 @@
           connection.classList.remove("connected", "disconnected");
           if (status) connection.classList.add(status);
           connectionText.textContent = label;
+        }
+
+        function showGeneratingBriefing() {
+          operatorBriefing.classList.add("is-visible");
+          briefingGenerating.hidden = false;
+          briefingDetails.hidden = true;
+          briefingSeverity.textContent = "";
+          briefingSeverity.classList.remove("warning", "critical");
+          briefingSummary.textContent = "";
+          briefingAction.textContent = "";
+          briefingTimeBudget.textContent = "";
+        }
+
+        function clearBriefing() {
+          operatorBriefing.classList.remove("is-visible");
+          briefingGenerating.hidden = true;
+          briefingDetails.hidden = true;
+          briefingSeverity.textContent = "";
+          briefingSeverity.classList.remove("warning", "critical");
+          briefingSummary.textContent = "";
+          briefingAction.textContent = "";
+          briefingTimeBudget.textContent = "";
+        }
+
+        function receiveBriefing(message) {
+          const briefing = message.briefing;
+          if (
+            !breachActive ||
+            !Number.isInteger(message.motor) ||
+            !briefing ||
+            !["WARNING", "CRITICAL"].includes(briefing.severity) ||
+            typeof briefing.summary !== "string" ||
+            typeof briefing.recommended_action !== "string" ||
+            typeof briefing.time_budget !== "string"
+          ) {
+            return;
+          }
+
+          briefingGenerating.hidden = true;
+          briefingDetails.hidden = false;
+          briefingSeverity.textContent = briefing.severity;
+          briefingSeverity.classList.toggle("warning", briefing.severity === "WARNING");
+          briefingSeverity.classList.toggle("critical", briefing.severity === "CRITICAL");
+          briefingSummary.textContent = briefing.summary;
+          briefingAction.textContent = briefing.recommended_action;
+          briefingTimeBudget.textContent = briefing.time_budget;
+          addEvent(
+            new Date().toISOString(),
+            `BRIEFING RECEIVED — MOTOR ${String(message.motor).padStart(2, "0")}`,
+            false,
+          );
         }
 
         function addEvent(timestamp, message, isOverheat) {
@@ -1060,16 +1181,18 @@
           const content = document.getElementById("alert-content");
           if (hasBreach && !breachActive) {
             breachAcknowledged = false;
+            breachActive = true;
             activeAlert.classList.add("unacknowledged");
+            showGeneratingBriefing();
             playBreachAlarm();
-            alarmRepeatTimer = setInterval(playBreachAlarm, 8000);
+            startAlarmRepeat();
           } else if (!hasBreach && breachActive) {
-            clearInterval(alarmRepeatTimer);
-            alarmRepeatTimer = undefined;
+            breachActive = false;
+            clearAlarmRepeat();
             breachAcknowledged = false;
             activeAlert.classList.remove("unacknowledged");
+            clearBriefing();
           }
-          breachActive = hasBreach;
           activeAlert.classList.toggle("is-active", hasBreach);
           eventPanel.classList.toggle("alarm-active", hasBreach);
           content.textContent = breaches.length > 0 ? breaches.join("  /  ") : "NO ACTIVE BREACH — ALL MOTORS WITHIN LIMITS";
@@ -1127,9 +1250,14 @@
           });
           socket.addEventListener("message", (event) => {
             try {
-              updateDashboard(JSON.parse(event.data));
+              const message = JSON.parse(event.data);
+              if (message && typeof message === "object" && "type" in message) {
+                if (message.type === "briefing") receiveBriefing(message);
+                return;
+              }
+              updateDashboard(message);
             } catch (error) {
-              console.error("Unable to process telemetry message:", error);
+              console.error("Unable to process WebSocket message:", error);
             }
           });
           socket.addEventListener("error", () => socket.close());
