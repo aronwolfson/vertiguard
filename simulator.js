@@ -292,10 +292,17 @@ async function createOperatorBriefing(snapshot) {
     );
     if (!response.ok) throw new Error(`Gemini request failed with status ${response.status}.`);
     const result = await response.json();
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (typeof text !== "string") throw new Error("Gemini response did not contain briefing JSON.");
+    const parts = result.candidates?.[0]?.content?.parts;
+    const text = Array.isArray(parts)
+      ? parts
+          .filter((part) => part?.thought !== true && typeof part?.text === "string")
+          .map((part) => part.text)
+          .join("")
+      : "";
+    if (!text) throw new Error("Gemini response did not contain briefing JSON.");
     return { briefing: validateBriefing(JSON.parse(text)), source: "Gemini" };
-  } catch {
+  } catch (error) {
+    console.error("Gemini briefing failed:", error.message);
     return { briefing: buildTemplateBriefing(snapshot), source: "template" };
   } finally {
     clearTimeout(timeout);
