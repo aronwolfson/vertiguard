@@ -193,6 +193,8 @@ function update(deltaSeconds, nowMs) {
     wind_kt: Number(state.windKt.toFixed(1)),
     gps_lat: Number((state.gpsLat + driftLatitudeOffset).toFixed(6)),
     gps_lon: Number((state.gpsLon + driftLongitudeOffset).toFixed(6)),
+    active_faults: [...activeFaults],
+    gps_drift_m: Math.round(faultEffects.gpsDriftMeters),
   };
 }
 

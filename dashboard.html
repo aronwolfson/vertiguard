@@ -40,9 +40,12 @@
       * { box-sizing: border-box; }
 
       body {
+        height: 100vh;
         min-width: 360px;
-        min-height: 100vh;
         margin: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         background: var(--bg);
         color: var(--text);
         font-family: var(--mono);
@@ -52,6 +55,7 @@
 
       /* ---------- top bar ---------- */
       .topbar {
+        flex: 0 0 56px;
         height: 56px;
         display: flex;
         align-items: center;
@@ -107,7 +111,11 @@
         white-space: nowrap;
         cursor: pointer;
       }
-      .attention-toggle[aria-pressed="true"] { border-color: var(--ok); color: var(--text); }
+      .attention-toggle[aria-pressed="true"] {
+        border-color: var(--text);
+        background: var(--text);
+        color: var(--bg);
+      }
       .attention-toggle:hover { border-color: var(--cyan); }
       .attention-toggle:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
       .callsign {
@@ -146,8 +154,17 @@
       .connection.disconnected .connection-dot { background: var(--red); }
 
       /* ---------- layout / panels ---------- */
-      main { max-width: 1800px; margin: 0 auto; padding: 18px 20px 24px; }
-      .overview { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 14px; }
+      main {
+        width: 100%;
+        max-width: 1800px;
+        min-height: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        margin: 0 auto;
+        padding: 12px 20px 14px;
+      }
+      .overview { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 14px; }
       .panel {
         overflow: hidden;
         border: 1px solid var(--border);
@@ -173,19 +190,51 @@
         letter-spacing: 0.16em;
         text-transform: uppercase;
       }
-      .map-meta { color: var(--muted); font-family: var(--mono); font-size: 10px; }
-      #map { height: 510px; width: 100%; background: #0a0b0c; }
-      .map-column { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
+      .map-heading-actions { display: flex; align-items: center; gap: 12px; }
+      .map-readout { display: flex; align-items: center; gap: 10px; }
+      .map-meta { color: var(--muted); font-family: var(--mono); font-size: 10px; white-space: nowrap; }
+      .gps-warning {
+        display: none;
+        padding: 4px 6px;
+        border: 1px solid var(--amber);
+        border-radius: 2px;
+        color: var(--amber);
+        font-family: var(--cond);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        white-space: nowrap;
+      }
+      .gps-warning.is-visible { display: inline-block; }
+      .basemap-toggle { display: flex; gap: 4px; }
+      .basemap-button {
+        min-height: 25px;
+        padding: 0 7px;
+        border: 1px solid var(--border-strong);
+        border-radius: 2px;
+        background: var(--panel);
+        color: var(--muted);
+        font-family: var(--cond);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        cursor: pointer;
+      }
+      .basemap-button[aria-pressed="true"] { border-color: var(--text); background: var(--text); color: var(--bg); }
+      .basemap-button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+      .map-column { min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+      .map-panel { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+      #map { min-height: 320px; width: 100%; flex: 1; background: #0a0b0c; }
 
       .control-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 10px; }
       .simulator-control {
-        min-height: 66px;
+        min-height: 44px;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
         justify-content: center;
         gap: 3px;
-        padding: 10px 12px;
+        padding: 6px 10px;
         border: 1px solid var(--border-strong);
         border-radius: 2px;
         background: var(--panel-2);
@@ -200,9 +249,13 @@
       .simulator-control:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
       .simulator-control:disabled { color: var(--faint); cursor: not-allowed; opacity: 0.55; }
       .simulator-control.clear { color: var(--red); }
+      .simulator-control.is-active { border-color: var(--red); border-width: 2px; color: var(--red); }
+      .simulator-control.is-active span, .simulator-control.is-active strong { color: var(--red); }
 
       .leaflet-container { font-family: var(--mono); background: #0a0b0c; }
-      .leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92) saturate(0.55); }
+      .dark-tiles .leaflet-tile, .leaflet-tile.dark-tiles {
+        filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92) saturate(0.55);
+      }
       .leaflet-control-attribution { background: rgb(10 11 12 / 85%) !important; color: #59636c !important; font-size: 9px !important; }
       .leaflet-control-attribution a { color: #7d868f !important; }
       .leaflet-control-zoom { border: 1px solid var(--border-strong) !important; border-radius: 2px !important; box-shadow: none !important; }
@@ -253,16 +306,16 @@
 
       /* ---------- telemetry cards ---------- */
       .telemetry-column { display: flex; flex-direction: column; gap: 14px; }
-      .values-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
+      .values-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; }
       .value-card {
-        min-height: 84px;
-        padding: 10px 11px;
+        min-height: 66px;
+        padding: 8px 9px;
         border: 1px solid var(--border);
         border-radius: 2px;
         background: var(--panel-2);
         transition: border-color 180ms ease, background 180ms ease;
       }
-      .value-card.wide { grid-column: 1 / -1; min-height: 80px; }
+      .value-card.wide { grid-column: 1 / -1; min-height: 58px; }
       .value-label {
         color: var(--muted);
         font-family: var(--cond);
@@ -271,18 +324,18 @@
         letter-spacing: 0.18em;
         text-transform: uppercase;
       }
-      .value-line { display: flex; align-items: baseline; gap: 6px; margin-top: 9px; }
+      .value-line { display: flex; align-items: baseline; gap: 6px; margin-top: 6px; }
       .value-number {
         font-family: var(--mono);
-        font-size: 24px;
+        font-size: 21px;
         font-weight: 600;
         line-height: 1;
         font-variant-numeric: tabular-nums;
         letter-spacing: -0.03em;
       }
       .value-unit { color: var(--faint); font-family: var(--mono); font-size: 10px; font-weight: 500; }
-      .battery-card .value-line { margin-top: 7px; }
-      .battery-bar { height: 6px; overflow: hidden; margin-top: 11px; border-radius: 0; background: #23282c; }
+      .battery-card .value-line { margin-top: 5px; }
+      .battery-bar { height: 4px; overflow: hidden; margin-top: 6px; border-radius: 0; background: #23282c; }
       .battery-fill { width: 100%; height: 100%; background: var(--ok); transition: width 300ms ease, background 180ms ease; }
       .battery-card.amber, .motor-card.amber { border-color: #7a5a22; background: #1a1407; }
       .battery-card.red, .motor-card.red { border-color: #7e2f33; background: #1c0e0f; }
@@ -292,10 +345,10 @@
       .battery-fill.red { background: var(--red); }
 
       .motors-panel { flex: 1; }
-      .motor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
+      .motor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; }
       .motor-card {
-        min-height: 98px;
-        padding: 10px 11px;
+        min-height: 78px;
+        padding: 8px 9px;
         border: 1px solid var(--border);
         border-radius: 2px;
         background: var(--panel-2);
@@ -319,19 +372,19 @@
       }
       .motor-card.amber .motor-state { color: var(--amber); }
       .motor-card.red .motor-state { color: var(--red); }
-      .motor-reading { display: flex; align-items: baseline; gap: 5px; margin-top: 11px; }
+      .motor-reading { display: flex; align-items: baseline; gap: 5px; margin-top: 7px; }
       .motor-temp {
         font-family: var(--mono);
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 600;
         line-height: 1;
         font-variant-numeric: tabular-nums;
       }
-      .motor-rpm { margin-top: 7px; color: var(--muted); font-family: var(--mono); font-size: 10px; }
+      .motor-rpm { margin-top: 4px; color: var(--muted); font-family: var(--mono); font-size: 9px; }
 
       /* ---------- events ---------- */
-      .event-panel { margin-top: 14px; }
-      .event-layout { display: grid; grid-template-columns: minmax(250px, 0.8fr) minmax(0, 2fr); min-height: 146px; }
+      .event-panel { min-height: 0; flex: 0 0 154px; display: flex; flex-direction: column; margin-top: 12px; }
+      .event-layout { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(250px, 0.8fr) minmax(0, 2fr); }
       .active-alert { padding: 14px 16px; border-right: 1px solid var(--border); border-left: 2px solid transparent; }
       .alert-label {
         color: var(--faint);
@@ -374,7 +427,7 @@
       }
       .active-alert.is-active { animation: hard-alert-blink 1s steps(1, end) infinite; }
       .active-alert.is-active .alert-label { animation: hard-label-blink 1s steps(1, end) infinite; }
-      .event-list-wrap { min-width: 0; padding: 12px 16px; }
+      .event-list-wrap { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 8px 16px; }
       .event-list-title {
         margin: 0 0 8px;
         color: var(--faint);
@@ -383,7 +436,7 @@
         font-weight: 700;
         letter-spacing: 0.2em;
       }
-      .event-list { max-height: 115px; overflow: auto; margin: 0; padding: 0; list-style: none; scrollbar-width: thin; scrollbar-color: #363e45 transparent; }
+      .event-list { min-height: 0; flex: 1; overflow: auto; margin: 0; padding: 0; list-style: none; scrollbar-width: thin; scrollbar-color: #363e45 transparent; }
       .event-list::-webkit-scrollbar { width: 6px; }
       .event-list::-webkit-scrollbar-thumb { background: #363e45; }
       .event-item {
@@ -412,44 +465,68 @@
       .empty-log { padding: 5px 0; color: var(--faint); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; }
 
       @media (max-width: 1000px) {
-        main { padding: 14px; }
+        main { padding: 10px 14px; }
         .overview { grid-template-columns: minmax(0, 1fr) 310px; gap: 12px; }
-        #map { height: 470px; }
         .topbar { padding: 0 14px; }
       }
 
       @media (max-width: 760px) {
-        .topbar { height: auto; min-height: 56px; padding: 10px 14px; }
+        .topbar { height: 56px; min-height: 56px; padding: 0 10px; gap: 8px; }
         .brand { gap: 9px; }
-        h1 { font-size: 15px; }
+        h1 { font-size: 14px; letter-spacing: 0.08em; }
         .brand-mark { width: 30px; height: 30px; flex-basis: 30px; }
-        .header-right { gap: 8px; }
-        .attention-controls { gap: 4px; }
-        .attention-toggle { min-height: 27px; padding: 0 6px; font-size: 10px; letter-spacing: 0.1em; }
+        .header-right { gap: 6px; }
+        .attention-controls { gap: 3px; }
+        .attention-toggle { min-height: 25px; padding: 0 5px; font-size: 9px; letter-spacing: 0.06em; }
         .callsign span { display: none; }
-        .connection { font-size: 11px; }
-        main { padding: 12px 10px 20px; }
-        .overview { grid-template-columns: 1fr; }
-        #map { height: min(58vh, 430px); min-height: 310px; }
-        .telemetry-column { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 10px; }
+        .connection { gap: 4px; font-size: 10px; letter-spacing: 0.08em; }
+        main { padding: 8px 10px 10px; }
+        .overview { grid-template-columns: minmax(0, 1fr) 285px; gap: 8px; }
+        .map-column { gap: 8px; }
+        .telemetry-column { gap: 8px; }
         .values-panel, .motors-panel { min-width: 0; }
-        .values-grid, .motor-grid { grid-template-columns: 1fr 1fr; gap: 7px; padding: 8px; }
-        .value-card, .motor-card { padding: 9px; }
-        .value-number { font-size: 20px; }
-        .value-card { min-height: 76px; }
-        .value-card.wide { min-height: 76px; }
-        .motor-card { min-height: 90px; }
-        .event-layout { grid-template-columns: 1fr; }
-        .active-alert { border-right: 0; border-bottom: 1px solid var(--border); }
-        .alert-content { min-height: 32px; }
+        .values-grid, .motor-grid { gap: 5px; padding: 6px; }
+        .value-card, .motor-card { min-height: 60px; padding: 6px; }
+        .value-card.wide { min-height: 54px; }
+        .value-number { font-size: 18px; }
+        .motor-card { min-height: 70px; }
+        .motor-temp { font-size: 16px; }
+        .event-panel { flex-basis: 140px; }
+        .event-layout { grid-template-columns: minmax(180px, 0.8fr) minmax(0, 2fr); }
+        .active-alert { padding: 10px; }
+        .alert-content { min-height: 32px; font-size: 10px; }
+        .event-list-wrap { padding: 6px 10px; }
+        .map-heading-actions { gap: 5px; }
+        .map-readout { gap: 5px; }
+        .map-meta { font-size: 8px; }
+        .basemap-button { min-height: 22px; padding: 0 5px; font-size: 9px; }
       }
 
       @media (max-width: 480px) {
-        .telemetry-column { grid-template-columns: 1fr; }
-        .values-grid { grid-template-columns: 1fr 1fr; }
-        .header-right { gap: 10px; }
-        .callsign { font-size: 10px; }
-        .event-item { flex-direction: column; gap: 2px; }
+        .topbar { padding: 0 6px; }
+        .brand { gap: 5px; }
+        h1 { max-width: 128px; overflow: hidden; font-size: 11px; text-overflow: ellipsis; }
+        .eyebrow { font-size: 8px; }
+        .brand-mark { width: 24px; height: 24px; flex-basis: 24px; }
+        .attention-toggle { min-height: 23px; padding: 0 3px; font-size: 8px; }
+        .connection { font-size: 8px; }
+        .simulator-control { min-height: 40px; padding: 4px; }
+        .simulator-control span { font-size: 9px; }
+        .simulator-control strong { font-size: 11px; letter-spacing: 0.05em; }
+        main { padding: 5px; }
+        .overview { grid-template-columns: minmax(0, 1fr) minmax(165px, 44%); gap: 5px; }
+        .panel-heading { padding: 0 6px; }
+        .heading-title h2 { font-size: 11px; letter-spacing: 0.08em; }
+        .map-heading-actions { flex-direction: column; align-items: flex-end; gap: 3px; }
+        .map-readout { flex-direction: column; align-items: flex-end; gap: 3px; }
+        .map-meta { font-size: 7px; }
+        .gps-warning { padding: 2px 3px; font-size: 8px; }
+        .event-panel { flex-basis: 132px; }
+        .event-layout { grid-template-columns: minmax(120px, 0.8fr) minmax(0, 2fr); }
+        .active-alert { padding: 7px; }
+        .event-list-wrap { padding: 5px 7px; }
+        .event-item { flex-direction: column; gap: 2px; padding: 3px 0; font-size: 8px; }
+        .event-time { font-size: 8px; }
       }
     </style>
   </head>
@@ -489,7 +566,16 @@
               <div class="heading-title">
                 <h2 id="map-heading">Live position</h2>
               </div>
-              <div class="map-meta" id="coordinates">27.975900, -82.533200</div>
+              <div class="map-heading-actions">
+                <div class="basemap-toggle" role="group" aria-label="Basemap">
+                  <button id="dark-basemap" class="basemap-button" type="button" aria-pressed="true">DARK</button>
+                  <button id="satellite-basemap" class="basemap-button" type="button" aria-pressed="false">SATELLITE</button>
+                </div>
+                <div class="map-readout">
+                  <div class="map-meta" id="coordinates">27.975900, -82.533200</div>
+                  <span id="gps-warning" class="gps-warning" role="status">GPS UNRELIABLE</span>
+                </div>
+              </div>
             </div>
             <div id="map" aria-label="Map showing the aircraft and Florida vertiports"></div>
           </section>
@@ -619,10 +705,53 @@
           dragging: true,
           scrollWheelZoom: true,
         }).setView(TAMPA, 9);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        const darkBasemap = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
+          className: "dark-tiles",
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        }).addTo(map);
+        });
+        darkBasemap.on("tileloadstart", ({ tile }) => tile.classList.add("dark-tiles"));
+        const satelliteBasemap = L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxZoom: 19,
+            attribution: "Tiles &copy; Esri",
+          },
+        );
+        const satelliteLabels = L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxZoom: 19,
+            pane: "overlayPane",
+            attribution: "Labels &copy; Esri",
+          },
+        );
+        darkBasemap.addTo(map);
+
+        const darkBasemapButton = document.getElementById("dark-basemap");
+        const satelliteBasemapButton = document.getElementById("satellite-basemap");
+
+        function setBasemap(mode, persist = true) {
+          const satellite = mode === "satellite";
+          if (satellite) {
+            map.removeLayer(darkBasemap);
+            satelliteBasemap.addTo(map);
+            satelliteLabels.addTo(map);
+          } else {
+            map.removeLayer(satelliteBasemap);
+            map.removeLayer(satelliteLabels);
+            darkBasemap.addTo(map);
+          }
+          darkBasemapButton.setAttribute("aria-pressed", String(!satellite));
+          satelliteBasemapButton.setAttribute("aria-pressed", String(satellite));
+          if (persist) localStorage.setItem("vg_basemap", satellite ? "satellite" : "dark");
+          requestAnimationFrame(() => map.invalidateSize());
+        }
+
+        darkBasemapButton.addEventListener("click", () => setBasemap("dark"));
+        satelliteBasemapButton.addEventListener("click", () => setBasemap("satellite"));
+        if (localStorage.getItem("vg_basemap") === "satellite") setBasemap("satellite", false);
+        window.addEventListener("resize", () => map.invalidateSize());
 
         const aircraftIcon = L.divIcon({
           className: "aircraft-icon",
@@ -651,13 +780,25 @@
         const eventList = document.getElementById("event-list");
         const eventPanel = document.querySelector(".event-panel");
         const activeAlert = document.getElementById("active-alert");
+        const gpsWarning = document.getElementById("gps-warning");
         const connection = document.getElementById("connection");
         const connectionText = document.getElementById("connection-text");
         const soundToggle = document.getElementById("sound-toggle");
         const notificationsToggle = document.getElementById("notifications-toggle");
-        let soundArmed = false;
+        const faultButtons = [...document.querySelectorAll(".simulator-control[data-fault]")];
+        const faultLabels = {
+          motor_overheat: "MOTOR OVERHEAT",
+          battery_sag: "BATTERY SAG",
+          gps_drift: "GPS DRIFT",
+        };
+        let soundArmed = localStorage.getItem("vg_sound_armed") === "true";
         let audioContext;
-        let notificationsEnabled = false;
+        let notificationsEnabled =
+          localStorage.getItem("vg_alerts_enabled") === "true" &&
+          "Notification" in window &&
+          Notification.permission === "granted";
+        let previousActiveFaults = [];
+        let gpsWarningLogged = false;
         let breachActive = false;
         let breachAcknowledged = false;
         let alarmRepeatTimer;
@@ -665,28 +806,55 @@
         let reconnectTimer;
         let commandSocket;
 
+        function updateAttentionToggle(button, enabled, onText, offText) {
+          button.setAttribute("aria-pressed", String(enabled));
+          button.textContent = enabled ? onText : offText;
+        }
+
+        updateAttentionToggle(soundToggle, soundArmed, "SOUND: ARMED", "ARM SOUND");
+        updateAttentionToggle(notificationsToggle, notificationsEnabled, "ALERTS: ON", "ENABLE ALERTS");
+
+        function ensureAudioContext() {
+          const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextConstructor) throw new Error("Web Audio is not supported by this browser.");
+          if (!audioContext || audioContext.state === "closed") {
+            audioContext = new AudioContextConstructor();
+          }
+          return audioContext;
+        }
+
+        if (soundArmed) {
+          const resumeStoredSound = async () => {
+            window.removeEventListener("click", resumeStoredSound, true);
+            window.removeEventListener("keydown", resumeStoredSound, true);
+            if (!soundArmed) return;
+            try {
+              await ensureAudioContext().resume();
+            } catch (error) {
+              console.error("Unable to resume stored alarm sound:", error);
+            }
+          };
+          window.addEventListener("click", resumeStoredSound, { capture: true, once: true });
+          window.addEventListener("keydown", resumeStoredSound, { capture: true, once: true });
+        }
+
         soundToggle.addEventListener("click", async () => {
           if (soundArmed) {
             soundArmed = false;
-            soundToggle.setAttribute("aria-pressed", "false");
-            soundToggle.textContent = "ARM SOUND";
+            localStorage.setItem("vg_sound_armed", "false");
+            updateAttentionToggle(soundToggle, false, "SOUND: ARMED", "ARM SOUND");
             return;
           }
 
           try {
-            const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContextConstructor) throw new Error("Web Audio is not supported by this browser.");
-            if (!audioContext || audioContext.state === "closed") {
-              audioContext = new AudioContextConstructor();
-            }
-            await audioContext.resume();
+            await ensureAudioContext().resume();
             soundArmed = true;
-            soundToggle.setAttribute("aria-pressed", "true");
-            soundToggle.textContent = "SOUND ARMED";
+            localStorage.setItem("vg_sound_armed", "true");
+            updateAttentionToggle(soundToggle, true, "SOUND: ARMED", "ARM SOUND");
           } catch (error) {
             soundArmed = false;
-            soundToggle.setAttribute("aria-pressed", "false");
-            soundToggle.textContent = "ARM SOUND";
+            localStorage.setItem("vg_sound_armed", "false");
+            updateAttentionToggle(soundToggle, false, "SOUND: ARMED", "ARM SOUND");
             console.error("Unable to arm alarm sound:", error);
           }
         });
@@ -694,8 +862,8 @@
         notificationsToggle.addEventListener("click", async () => {
           if (notificationsEnabled) {
             notificationsEnabled = false;
-            notificationsToggle.setAttribute("aria-pressed", "false");
-            notificationsToggle.textContent = "ENABLE ALERTS";
+            localStorage.setItem("vg_alerts_enabled", "false");
+            updateAttentionToggle(notificationsToggle, false, "ALERTS: ON", "ENABLE ALERTS");
             return;
           }
 
@@ -706,8 +874,8 @@
           try {
             const permission = await Notification.requestPermission();
             notificationsEnabled = permission === "granted";
-            notificationsToggle.setAttribute("aria-pressed", String(notificationsEnabled));
-            notificationsToggle.textContent = notificationsEnabled ? "ALERTS ENABLED" : "ENABLE ALERTS";
+            localStorage.setItem("vg_alerts_enabled", String(notificationsEnabled));
+            updateAttentionToggle(notificationsToggle, notificationsEnabled, "ALERTS: ON", "ENABLE ALERTS");
           } catch (error) {
             console.error("Unable to request notification permission:", error);
           }
@@ -810,6 +978,53 @@
           while (eventList.children.length > MAX_EVENTS) eventList.lastElementChild.remove();
         }
 
+        function updateFaultStatus(telemetry) {
+          if (!Array.isArray(telemetry.active_faults)) return previousActiveFaults;
+
+          const currentFaults = [...new Set(telemetry.active_faults.filter((fault) => typeof fault === "string"))];
+          for (const fault of currentFaults) {
+            if (!previousActiveFaults.includes(fault)) {
+              const label = faultLabels[fault] || fault.toUpperCase().replaceAll("_", " ");
+              addEvent(telemetry.timestamp, `FAULT INJECTED — ${label}`, false);
+            }
+          }
+
+          if (previousActiveFaults.length > 0 && currentFaults.length === 0) {
+            addEvent(telemetry.timestamp, "ALL FAULTS CLEARED", false);
+          }
+
+          for (const button of faultButtons) {
+            button.classList.toggle("is-active", currentFaults.includes(button.dataset.fault));
+          }
+
+          if (previousActiveFaults.includes("gps_drift") && !currentFaults.includes("gps_drift")) {
+            gpsWarningLogged = false;
+            gpsWarning.classList.remove("is-visible");
+          }
+          previousActiveFaults = currentFaults;
+          return currentFaults;
+        }
+
+        function updateGpsIntegrity(telemetry, activeFaults) {
+          const driftMeters = Number(telemetry.gps_drift_m);
+          const driftActive = activeFaults.includes("gps_drift");
+          const unreliable = driftActive && Number.isFinite(driftMeters) && driftMeters > 100;
+          gpsWarning.classList.toggle("is-visible", unreliable);
+
+          if (!driftActive) {
+            gpsWarningLogged = false;
+            return;
+          }
+          if (unreliable && !gpsWarningLogged) {
+            addEvent(
+              telemetry.timestamp,
+              `GPS POSITION UNRELIABLE — DRIFT ${Math.round(driftMeters)} M`,
+              false,
+            );
+            gpsWarningLogged = true;
+          }
+        }
+
         function updateMotors(telemetry) {
           const breaches = [];
           for (let index = 0; index < motorCards.length; index += 1) {
@@ -861,6 +1076,9 @@
         }
 
         function updateDashboard(telemetry) {
+          const activeFaults = updateFaultStatus(telemetry);
+          updateGpsIntegrity(telemetry, activeFaults);
+
           document.getElementById("altitude").textContent = Number(telemetry.altitude_ft).toLocaleString(undefined, { maximumFractionDigits: 1 });
           document.getElementById("airspeed").textContent = Number(telemetry.airspeed_kt).toFixed(1);
           document.getElementById("battery").textContent = Number(telemetry.battery_pct).toFixed(1);
