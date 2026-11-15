@@ -179,6 +179,7 @@ function update(deltaSeconds, nowMs) {
 
   return {
     timestamp: new Date(nowMs).toISOString(),
+    heading_deg: Number(state.headingDeg.toFixed(1)),
     altitude_ft: Number(state.altitudeFt.toFixed(1)),
     airspeed_kt: Number(state.airspeedKt.toFixed(1)),
     battery_pct: Number(state.batteryPct.toFixed(2)),
