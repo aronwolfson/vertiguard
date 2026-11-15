@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1017">
+    <title>VertiGuard — Tampa Operations</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    >
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0b1017;
+        color: #e8edf4;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        --panel: #111923;
+        --panel-raised: #151f2b;
+        --border: #253242;
+        --muted: #8c9aaa;
+        --green: #42d392;
+        --amber: #ffbd4a;
+        --red: #ff5f68;
+        --blue: #52a8ff;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        min-width: 360px;
+        min-height: 100vh;
+        margin: 0;
+        background:
+          radial-gradient(ellipse at 18% -16%, rgb(44 86 119 / 18%), transparent 42%),
+          #0b1017;
+      }
+
+      .topbar {
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 0 28px;
+        border-bottom: 1px solid var(--border);
+        background: rgb(13 19 27 / 94%);
+      }
+
+      .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #2e5672;
+        border-radius: 9px;
+        color: #68bbff;
+        background: #102334;
+        font-size: 19px;
+        font-weight: 800;
+      }
+
+      h1 { margin: 0; font-size: 15px; letter-spacing: 0.095em; font-weight: 750; }
+      .eyebrow, .section-kicker { color: var(--muted); font-size: 10px; letter-spacing: 0.16em; font-weight: 700; }
+      .header-right { display: flex; align-items: center; gap: 24px; }
+      .callsign { font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; }
+      .callsign span { color: var(--muted); font: 600 9px/1 Inter, ui-sans-serif, sans-serif; letter-spacing: 0.13em; }
+      .connection {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+      .connection-dot { width: 8px; height: 8px; border-radius: 50%; background: #66717e; box-shadow: 0 0 0 3px rgb(102 113 126 / 12%); }
+      .connection.connected { color: var(--green); }
+      .connection.connected .connection-dot { background: var(--green); box-shadow: 0 0 0 3px rgb(66 211 146 / 13%), 0 0 12px rgb(66 211 146 / 45%); }
+      .connection.disconnected { color: var(--red); }
+      .connection.disconnected .connection-dot { background: var(--red); box-shadow: 0 0 0 3px rgb(255 95 104 / 13%); }
+
+      main { max-width: 1800px; margin: 0 auto; padding: 22px 28px 28px; }
+      .overview { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 18px; }
+      .panel { overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+      .panel-heading {
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .heading-title { display: flex; align-items: center; gap: 10px; }
+      .heading-title h2 { margin: 0; font-size: 12px; letter-spacing: 0.07em; font-weight: 720; text-transform: uppercase; }
+      .live-tag { display: inline-flex; align-items: center; gap: 6px; color: var(--green); font-size: 9px; font-weight: 750; letter-spacing: 0.14em; }
+      .live-tag::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
+      .map-meta { color: var(--muted); font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+      #map { height: 510px; width: 100%; background: #14202a; }
+
+      .leaflet-container { font-family: inherit; }
+      .leaflet-control-attribution { background: rgb(11 16 23 / 82%) !important; color: #aab7c5 !important; }
+      .leaflet-control-attribution a { color: #79baff !important; }
+      .leaflet-control-zoom a { color: #e8edf4 !important; background: #111923 !important; border-color: var(--border) !important; }
+      .aircraft-icon { background: transparent; border: 0; }
+      .aircraft-icon span {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border: 2px solid white;
+        border-radius: 50%;
+        background: #168df3;
+        box-shadow: 0 0 0 5px rgb(22 141 243 / 24%), 0 2px 12px #000;
+        color: white;
+        font-size: 18px;
+        font-weight: 800;
+        transform: rotate(45deg);
+      }
+      .vertiport-icon { background: transparent; border: 0; }
+      .vertiport-icon span {
+        width: 25px;
+        height: 25px;
+        display: grid;
+        place-items: center;
+        border: 2px solid #d5f3ff;
+        border-radius: 7px;
+        background: #087c85;
+        box-shadow: 0 2px 8px #0009;
+        color: white;
+        font-size: 11px;
+        font-weight: 800;
+      }
+      .leaflet-tooltip {
+        padding: 5px 8px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: #111923;
+        box-shadow: 0 4px 12px #0006;
+        color: #e8edf4;
+        font-size: 10px;
+        font-weight: 650;
+      }
+      .leaflet-tooltip::before { border-top-color: var(--border); }
+
+      .telemetry-column { display: flex; flex-direction: column; gap: 14px; }
+      .values-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; padding: 12px; }
+      .value-card {
+        min-height: 88px;
+        padding: 12px;
+        border: 1px solid #263545;
+        border-radius: 9px;
+        background: var(--panel-raised);
+        transition: border-color 180ms ease, background 180ms ease;
+      }
+      .value-card.wide { grid-column: 1 / -1; min-height: 84px; }
+      .value-label { color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+      .value-line { display: flex; align-items: baseline; gap: 6px; margin-top: 11px; }
+      .value-number { font: 650 25px/1 ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.07em; }
+      .value-unit { color: var(--muted); font-size: 10px; }
+      .battery-card .value-line { margin-top: 8px; }
+      .battery-bar { height: 5px; overflow: hidden; margin-top: 12px; border-radius: 9px; background: #283442; }
+      .battery-fill { width: 100%; height: 100%; border-radius: inherit; background: var(--green); transition: width 300ms ease, background 180ms ease; }
+      .battery-card.amber, .motor-card.amber { border-color: #916b2b; background: #251f14; }
+      .battery-card.red, .motor-card.red { border-color: #8c3d43; background: #291719; }
+      .battery-card.amber .value-number, .motor-card.amber .motor-temp { color: var(--amber); }
+      .battery-card.red .value-number, .motor-card.red .motor-temp { color: var(--red); }
+      .battery-fill.amber { background: var(--amber); }
+      .battery-fill.red { background: var(--red); }
+
+      .motors-panel { flex: 1; }
+      .motor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; padding: 12px; }
+      .motor-card { min-height: 102px; padding: 11px; border: 1px solid #263545; border-radius: 9px; background: var(--panel-raised); transition: border-color 180ms ease, background 180ms ease; }
+      .motor-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+      .motor-name { color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: 0.1em; text-transform: uppercase; }
+      .motor-state { color: var(--green); font-size: 8px; font-weight: 750; letter-spacing: 0.08em; }
+      .motor-card.amber .motor-state { color: var(--amber); }
+      .motor-card.red .motor-state { color: var(--red); }
+      .motor-reading { display: flex; align-items: baseline; gap: 5px; margin-top: 12px; }
+      .motor-temp { font: 650 20px/1 ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+      .motor-rpm { margin-top: 7px; color: var(--muted); font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+      .event-panel { margin-top: 18px; }
+      .event-layout { display: grid; grid-template-columns: minmax(250px, 0.8fr) minmax(0, 2fr); min-height: 146px; }
+      .active-alert { padding: 16px; border-right: 1px solid var(--border); }
+      .alert-label { color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: 0.14em; }
+      .alert-content { min-height: 48px; display: flex; align-items: center; margin-top: 8px; color: #738192; font-size: 12px; line-height: 1.5; }
+      .active-alert.is-active { background: linear-gradient(120deg, rgb(255 95 104 / 10%), transparent 75%); }
+      .active-alert.is-active .alert-label, .active-alert.is-active .alert-content { color: var(--red); }
+      .active-alert.is-active .alert-content { align-items: flex-start; font-weight: 700; }
+      .event-list-wrap { min-width: 0; padding: 14px 16px; }
+      .event-list-title { margin: 0 0 9px; color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: 0.14em; }
+      .event-list { max-height: 115px; overflow: auto; margin: 0; padding: 0; list-style: none; }
+      .event-item { display: flex; gap: 10px; padding: 5px 0; border-top: 1px solid rgb(37 50 66 / 65%); font-size: 10px; line-height: 1.4; }
+      .event-time { flex: 0 0 auto; color: var(--muted); font: 9px ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .event-message { color: #ced7e1; }
+      .event-item.over .event-message { color: var(--red); }
+      .empty-log { padding: 5px 0; color: #738192; font-size: 10px; }
+
+      @media (max-width: 1000px) {
+        main { padding: 18px; }
+        .overview { grid-template-columns: minmax(0, 1fr) 310px; gap: 12px; }
+        #map { height: 470px; }
+        .topbar { padding: 0 18px; }
+      }
+
+      @media (max-width: 760px) {
+        .topbar { height: auto; min-height: 66px; padding: 12px 16px; }
+        .brand { gap: 9px; }
+        h1 { font-size: 12px; }
+        .brand-mark { width: 30px; height: 30px; }
+        .header-right { gap: 12px; }
+        .callsign span { display: none; }
+        .connection { font-size: 9px; }
+        main { padding: 14px 12px 22px; }
+        .overview { grid-template-columns: 1fr; }
+        #map { height: min(58vh, 430px); min-height: 310px; }
+        .telemetry-column { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 10px; }
+        .values-panel, .motors-panel { min-width: 0; }
+        .values-grid, .motor-grid { grid-template-columns: 1fr 1fr; gap: 7px; padding: 9px; }
+        .value-card, .motor-card { padding: 9px; }
+        .value-number { font-size: 20px; }
+        .value-card { min-height: 78px; }
+        .value-card.wide { min-height: 78px; }
+        .motor-card { min-height: 92px; }
+        .event-layout { grid-template-columns: 1fr; }
+        .active-alert { border-right: 0; border-bottom: 1px solid var(--border); }
+        .alert-content { min-height: 32px; }
+      }
+
+      @media (max-width: 480px) {
+        .telemetry-column { grid-template-columns: 1fr; }
+        .values-grid { grid-template-columns: 1fr 1fr; }
+        .header-right { gap: 10px; }
+        .callsign { font-size: 10px; }
+        .event-item { flex-direction: column; gap: 2px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">V</div>
+        <div>
+          <div class="eyebrow">FLEET OPERATIONS</div>
+          <h1>VERTIGUARD — Tampa Operations</h1>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="callsign"><span>CALLSIGN&nbsp; </span>VG-01</div>
+        <div id="connection" class="connection" role="status" aria-live="polite">
+          <span class="connection-dot" aria-hidden="true"></span>
+          <span id="connection-text">Connecting</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="overview" aria-label="Live aircraft overview">
+        <section class="panel map-panel" aria-labelledby="map-heading">
+          <div class="panel-heading">
+            <div class="heading-title">
+              <h2 id="map-heading">Flight tracking</h2>
+              <span class="live-tag">LIVE</span>
+            </div>
+            <div class="map-meta" id="coordinates">27.975900, -82.533200</div>
+          </div>
+          <div id="map" aria-label="Map showing the aircraft and Florida vertiports"></div>
+        </section>
+
+        <aside class="telemetry-column" aria-label="Live aircraft telemetry">
+          <section class="panel values-panel" aria-labelledby="values-heading">
+            <div class="panel-heading">
+              <div class="heading-title"><h2 id="values-heading">Flight systems</h2></div>
+              <span class="section-kicker">VG-01</span>
+            </div>
+            <div class="values-grid">
+              <article class="value-card">
+                <div class="value-label">Altitude</div>
+                <div class="value-line"><span id="altitude" class="value-number">—</span><span class="value-unit">FT</span></div>
+              </article>
+              <article class="value-card">
+                <div class="value-label">Airspeed</div>
+                <div class="value-line"><span id="airspeed" class="value-number">—</span><span class="value-unit">KT</span></div>
+              </article>
+              <article id="battery-card" class="value-card battery-card">
+                <div class="value-label">Battery</div>
+                <div class="value-line"><span id="battery" class="value-number">—</span><span class="value-unit">%</span></div>
+                <div class="battery-bar" role="progressbar" aria-label="Battery charge" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+                  <div id="battery-fill" class="battery-fill"></div>
+                </div>
+              </article>
+              <article class="value-card">
+                <div class="value-label">Battery voltage</div>
+                <div class="value-line"><span id="voltage" class="value-number">—</span><span class="value-unit">V</span></div>
+              </article>
+              <article class="value-card wide">
+                <div class="value-label">Wind speed</div>
+                <div class="value-line"><span id="wind" class="value-number">—</span><span class="value-unit">KT</span></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel motors-panel" aria-labelledby="motors-heading">
+            <div class="panel-heading">
+              <div class="heading-title"><h2 id="motors-heading">Motor status</h2></div>
+              <span class="section-kicker">01 — 04</span>
+            </div>
+            <div class="motor-grid">
+              <article class="motor-card" data-motor="0">
+                <div class="motor-top"><span class="motor-name">Motor 01</span><span class="motor-state">NOMINAL</span></div>
+                <div class="motor-reading"><span class="motor-temp">—</span><span class="value-unit">°C</span></div>
+                <div class="motor-rpm">— RPM</div>
+              </article>
+              <article class="motor-card" data-motor="1">
+                <div class="motor-top"><span class="motor-name">Motor 02</span><span class="motor-state">NOMINAL</span></div>
+                <div class="motor-reading"><span class="motor-temp">—</span><span class="value-unit">°C</span></div>
+                <div class="motor-rpm">— RPM</div>
+              </article>
+              <article class="motor-card" data-motor="2">
+                <div class="motor-top"><span class="motor-name">Motor 03</span><span class="motor-state">NOMINAL</span></div>
+                <div class="motor-reading"><span class="motor-temp">—</span><span class="value-unit">°C</span></div>
+                <div class="motor-rpm">— RPM</div>
+              </article>
+              <article class="motor-card" data-motor="3">
+                <div class="motor-top"><span class="motor-name">Motor 04</span><span class="motor-state">NOMINAL</span></div>
+                <div class="motor-reading"><span class="motor-temp">—</span><span class="value-unit">°C</span></div>
+                <div class="motor-rpm">— RPM</div>
+              </article>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <section class="panel event-panel" aria-labelledby="events-heading">
+        <div class="panel-heading">
+          <div class="heading-title"><h2 id="events-heading">Operations event log</h2></div>
+          <span class="section-kicker">MOTOR TEMPERATURE MONITOR</span>
+        </div>
+        <div class="event-layout">
+          <div id="active-alert" class="active-alert">
+            <div class="alert-label">ACTIVE ALERT</div>
+            <div id="alert-content" class="alert-content">No active motor temperature breaches.</div>
+          </div>
+          <div class="event-list-wrap">
+            <h3 class="event-list-title">RECENT EVENTS</h3>
+            <ul id="event-list" class="event-list" aria-live="polite">
+              <li class="empty-log">No motor threshold events recorded.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script>
+      (() => {
+        const TAMPA = [27.9759, -82.5332];
+        const ORLANDO = [28.4312, -81.3081];
+        const MAX_TRAIL_POINTS = 300;
+        const MAX_EVENTS = 50;
+
+        const map = L.map("map", { zoomControl: true }).setView(TAMPA, 9);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        }).addTo(map);
+
+        const aircraftIcon = L.divIcon({
+          className: "aircraft-icon",
+          html: "<span>✦</span>",
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
+        });
+        const vertiportIcon = L.divIcon({
+          className: "vertiport-icon",
+          html: "<span>V</span>",
+          iconSize: [25, 25],
+          iconAnchor: [12, 12],
+        });
+
+        L.marker(TAMPA, { icon: vertiportIcon }).addTo(map).bindTooltip("Tampa Vertiport", { direction: "top", offset: [0, -10] });
+        L.marker(ORLANDO, { icon: vertiportIcon }).addTo(map).bindTooltip("Orlando Vertiport", { direction: "top", offset: [0, -10] });
+
+        const aircraft = L.marker(TAMPA, { icon: aircraftIcon, zIndexOffset: 1000 })
+          .addTo(map)
+          .bindTooltip("VG-01", { direction: "top", offset: [0, -18] });
+        const trail = L.polyline([], { color: "#52a8ff", weight: 3, opacity: 0.78, lineCap: "round" }).addTo(map);
+        const trailPoints = [];
+        const motorCards = [...document.querySelectorAll(".motor-card")];
+        const previousBreaches = [false, false, false, false];
+        const eventList = document.getElementById("event-list");
+        const connection = document.getElementById("connection");
+        const connectionText = document.getElementById("connection-text");
+        let reconnectDelay = 1000;
+        let reconnectTimer;
+
+        function setConnection(status, label) {
+          connection.classList.remove("connected", "disconnected");
+          if (status) connection.classList.add(status);
+          connectionText.textContent = label;
+        }
+
+        function addEvent(timestamp, message, isOverheat) {
+          const empty = eventList.querySelector(".empty-log");
+          if (empty) empty.remove();
+
+          const item = document.createElement("li");
+          item.className = `event-item${isOverheat ? " over" : ""}`;
+          const time = document.createElement("time");
+          time.className = "event-time";
+          time.dateTime = timestamp;
+          const date = new Date(timestamp);
+          time.textContent = Number.isNaN(date.getTime()) ? timestamp : date.toLocaleTimeString();
+          const text = document.createElement("span");
+          text.className = "event-message";
+          text.textContent = message;
+          item.append(time, text);
+          eventList.prepend(item);
+
+          while (eventList.children.length > MAX_EVENTS) eventList.lastElementChild.remove();
+        }
+
+        function updateMotors(telemetry) {
+          const breaches = [];
+          for (let index = 0; index < motorCards.length; index += 1) {
+            const temperature = Number(telemetry.motor_temps_c[index]);
+            const rpm = Number(telemetry.motor_rpm[index]);
+            const breached = temperature > 100;
+            const card = motorCards[index];
+            card.classList.toggle("amber", temperature > 90 && !breached);
+            card.classList.toggle("red", breached);
+            card.querySelector(".motor-temp").textContent = Number.isFinite(temperature) ? temperature.toFixed(1) : "—";
+            card.querySelector(".motor-rpm").textContent = Number.isFinite(rpm) ? `${Math.round(rpm).toLocaleString()} RPM` : "— RPM";
+            card.querySelector(".motor-state").textContent = breached ? "OVER TEMP" : temperature > 90 ? "ELEVATED" : "NOMINAL";
+
+            if (breached) breaches.push(`MOTOR ${String(index + 1).padStart(2, "0")} · ${temperature.toFixed(1)}°C`);
+            if (breached !== previousBreaches[index]) {
+              const label = `Motor ${String(index + 1).padStart(2, "0")}`;
+              addEvent(
+                telemetry.timestamp,
+                breached
+                  ? `${label} crossed above 100°C (${temperature.toFixed(1)}°C)`
+                  : `${label} returned below 100°C (${temperature.toFixed(1)}°C)`,
+                breached,
+              );
+              previousBreaches[index] = breached;
+            }
+          }
+
+          const alert = document.getElementById("active-alert");
+          const content = document.getElementById("alert-content");
+          alert.classList.toggle("is-active", breaches.length > 0);
+          content.textContent = breaches.length > 0 ? breaches.join("  /  ") : "No active motor temperature breaches.";
+        }
+
+        function updateDashboard(telemetry) {
+          document.getElementById("altitude").textContent = Number(telemetry.altitude_ft).toLocaleString(undefined, { maximumFractionDigits: 1 });
+          document.getElementById("airspeed").textContent = Number(telemetry.airspeed_kt).toFixed(1);
+          document.getElementById("battery").textContent = Number(telemetry.battery_pct).toFixed(1);
+          document.getElementById("voltage").textContent = Number(telemetry.battery_voltage).toFixed(1);
+          document.getElementById("wind").textContent = Number(telemetry.wind_kt).toFixed(1);
+
+          const battery = Number(telemetry.battery_pct);
+          const batteryCard = document.getElementById("battery-card");
+          const batteryFill = document.getElementById("battery-fill");
+          const progress = batteryCard.querySelector(".battery-bar");
+          batteryCard.classList.toggle("amber", battery < 30 && battery >= 15);
+          batteryCard.classList.toggle("red", battery < 15);
+          batteryFill.classList.toggle("amber", battery < 30 && battery >= 15);
+          batteryFill.classList.toggle("red", battery < 15);
+          batteryFill.style.width = `${Math.max(0, Math.min(100, battery))}%`;
+          progress.setAttribute("aria-valuenow", String(Math.max(0, Math.min(100, battery))));
+
+          const latitude = Number(telemetry.gps_lat);
+          const longitude = Number(telemetry.gps_lon);
+          if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+            const position = [latitude, longitude];
+            aircraft.setLatLng(position);
+            trailPoints.push(position);
+            if (trailPoints.length > MAX_TRAIL_POINTS) trailPoints.shift();
+            trail.setLatLngs(trailPoints);
+            document.getElementById("coordinates").textContent = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+          }
+
+          updateMotors(telemetry);
+        }
+
+        function connect() {
+          setConnection("", "Connecting");
+          const socket = new WebSocket("ws://localhost:8080");
+          socket.addEventListener("open", () => {
+            reconnectDelay = 1000;
+            setConnection("connected", "Connected");
+          });
+          socket.addEventListener("message", (event) => {
+            try {
+              updateDashboard(JSON.parse(event.data));
+            } catch (error) {
+              console.error("Unable to process telemetry message:", error);
+            }
+          });
+          socket.addEventListener("error", () => socket.close());
+          socket.addEventListener("close", () => {
+            setConnection("disconnected", "Disconnected");
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(connect, reconnectDelay);
+            reconnectDelay = Math.min(reconnectDelay * 2, 10000);
+          });
+        }
+
+        connect();
+      })();
+    </script>
+  </body>
+</html>

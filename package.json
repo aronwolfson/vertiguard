@@ -1,0 +1,11 @@
+{
+  "name": "vertiguard-telemetry-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node simulator.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
