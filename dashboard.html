@@ -729,9 +729,10 @@
           preferCanvas: true,
           zoomAnimation: false,
           fadeAnimation: true,
-          wheelPxPerZoomLevel: 120,
-          zoomDelta: 0.5,
-          zoomSnap: 0.5,
+          wheelPxPerZoomLevel: 240,
+          wheelDebounceTime: 80,
+          zoomDelta: 0.25,
+          zoomSnap: 0.25,
           dragging: true,
           scrollWheelZoom: true,
         }).setView(TAMPA, 9);
@@ -740,7 +741,7 @@
         const svgRenderer = L.svg({ padding: 0.5 });
         const darkBasemap = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
-          keepBuffer: 4,
+          keepBuffer: 6,
           className: "dark-tiles",
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
         });
@@ -749,7 +750,7 @@
           "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
           {
             maxZoom: 19,
-            keepBuffer: 4,
+            keepBuffer: 6,
             attribution: "Tiles &copy; Esri",
           },
         );
