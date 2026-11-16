@@ -164,8 +164,9 @@
         margin: 0 auto;
         padding: 12px 20px 14px;
       }
-      .overview { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 14px; }
+      .overview { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 350px); gap: 14px; }
       .panel {
+        min-width: 0;
         overflow: hidden;
         border: 1px solid var(--border);
         border-radius: 2px;
@@ -222,7 +223,7 @@
       }
       .basemap-button[aria-pressed="true"] { border-color: var(--text); background: var(--text); color: var(--bg); }
       .basemap-button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
-      .map-column { min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+      .map-column { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
       .map-panel { min-height: 0; flex: 1; display: flex; flex-direction: column; }
       #map { min-height: 320px; width: 100%; flex: 1; background: #11161b; }
 
@@ -252,7 +253,9 @@
       .simulator-control.is-active { border-color: var(--red); border-width: 2px; color: var(--red); }
       .simulator-control.is-active span, .simulator-control.is-active strong { color: var(--red); }
 
+      .leaflet-zoom-anim .leaflet-zoom-animated { transition-duration: 0.15s; }
       .leaflet-container { font-family: var(--mono); background: #11161b; }
+      .leaflet-zoom-anim .leaflet-zoom-animated { transition-duration: 0.15s; }
       .dark-tiles .leaflet-tile, .leaflet-tile.dark-tiles {
         filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92) saturate(0.55);
       }
@@ -305,7 +308,7 @@
       .leaflet-tooltip::before { border-top-color: var(--border-strong); }
 
       /* ---------- telemetry cards ---------- */
-      .telemetry-column { display: flex; flex-direction: column; gap: 14px; }
+      .telemetry-column { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
       .values-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; }
       .value-card {
         min-height: 66px;
@@ -475,7 +478,7 @@
 
       @media (max-width: 1000px) {
         main { padding: 10px 14px; }
-        .overview { grid-template-columns: minmax(0, 1fr) 310px; gap: 12px; }
+        .overview { grid-template-columns: minmax(0, 1fr) minmax(280px, 310px); gap: 12px; }
         .topbar { padding: 0 14px; }
       }
 
@@ -536,6 +539,21 @@
         .event-list-wrap { padding: 5px 7px; }
         .event-item { flex-direction: column; gap: 2px; padding: 3px 0; font-size: 8px; }
         .event-time { font-size: 8px; }
+      }
+
+      @media (max-width: 900px) {
+        body { height: auto; min-height: 100vh; overflow-y: auto; }
+        .topbar { height: auto; min-height: 56px; flex-basis: auto; flex-wrap: wrap; gap: 8px; padding-top: 8px; padding-bottom: 8px; }
+        .header-right { flex-wrap: wrap; gap: 6px; }
+        main { flex: 0 0 auto; }
+        .overview { flex: 0 0 auto; grid-template-columns: minmax(0, 1fr); }
+        .map-column, .telemetry-column { min-width: 0; }
+      }
+
+      @media (min-width: 901px) and (max-height: 950px) {
+        body { height: auto; min-height: 100vh; overflow-y: auto; }
+        main { flex: 0 0 auto; }
+        .overview { flex: 0 0 auto; }
       }
     </style>
   </head>
@@ -729,10 +747,10 @@
           preferCanvas: true,
           zoomAnimation: true,
           fadeAnimation: false,
-          wheelPxPerZoomLevel: 240,
-          wheelDebounceTime: 80,
-          zoomDelta: 0.25,
-          zoomSnap: 0.25,
+          wheelPxPerZoomLevel: 60,
+          wheelDebounceTime: 20,
+          zoomDelta: 1,
+          zoomSnap: 0.5,
           dragging: true,
           scrollWheelZoom: true,
         }).setView(TAMPA, 9);
