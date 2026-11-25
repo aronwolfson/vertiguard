@@ -2,7 +2,7 @@
 
 Real-time operations console for an electric air taxi (eVTOL) fleet — the ground-side monitoring screen for Advanced Air Mobility.
 
-**Live demo:** _URL added after deployment_
+**Live demo:** https://vertiguard-195829893468.us-central1.run.app
 
 VertiGuard watches a live telemetry stream from an aircraft in flight. The moment any monitored value crosses a safety limit, the operator gets an audible alarm, a popup notification, and a plain-English briefing written by an LLM: what is wrong, how severe it is, what to do, and how much time is left to do it. It is modeled on the network operations centers that real air-taxi operators will use to supervise fleets of aircraft from the ground.
 
@@ -76,9 +76,9 @@ gcloud run deploy vertiguard --source . --allow-unauthenticated
 
 Set `GEMINI_API_KEY` as an environment variable on the service (Cloud Run console → Edit & deploy new revision → Variables). Do not bake it into the image or the repo.
 
-## Tech
+## AI tools
 
-Node.js (`ws` for WebSocket), vanilla JavaScript and Leaflet in a single HTML file, Google Gemini API. No build step, no framework.
+Built with AI assistance. GitHub Copilot in VS Code was used as the coding agent during development. Operator briefings are generated at runtime by Google Gemini.
 
 ## License
 
