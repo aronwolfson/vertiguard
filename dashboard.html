@@ -349,7 +349,7 @@
       .battery-fill.amber { background: var(--amber); }
       .battery-fill.red { background: var(--red); }
 
-      .motors-panel { flex: 1; }
+      .motors-panel { flex: 0 0 auto; }
       .motor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; }
       .motor-card {
         min-height: 78px;
@@ -388,7 +388,7 @@
       .motor-rpm { margin-top: 4px; color: var(--muted); font-family: var(--mono); font-size: 9px; }
 
       /* ---------- events ---------- */
-      .event-panel { min-height: 0; flex: 0 0 194px; display: flex; flex-direction: column; margin-top: 12px; }
+      .event-panel { position: relative; min-height: 0; flex: 0 0 194px; display: flex; flex-direction: column; margin-top: 12px; }
       .event-layout { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(250px, 0.8fr) minmax(0, 2fr); }
       .active-alert { padding: 14px 16px; border-right: 1px solid var(--border); border-left: 2px solid transparent; }
       .alert-label {
@@ -419,10 +419,11 @@
       }
       .active-alert.is-active.unacknowledged { cursor: pointer; }
       .active-alert.is-active.unacknowledged .alert-acknowledge { display: block; }
-      .active-alert.is-active { border-left-color: var(--red); background: #1c0e0f; }
+      .event-panel.acknowledged .alert-acknowledge { display: block; color: var(--muted); }
+      .active-alert.is-active { background: #1c0e0f; }
       .active-alert.is-active .alert-label { color: var(--red); }
       .active-alert.is-active .alert-content { min-height: 0; align-items: flex-start; color: var(--text); font-weight: 600; }
-      .briefing-panel { min-height: 0; flex: 0 1 250px; display: flex; flex-direction: column; }
+      .briefing-panel { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
       .operator-briefing { min-height: 150px; flex: 1; overflow: auto; padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 13px; line-height: 1.55; }
       .operator-briefing [hidden] { display: none; }
       .briefing-generating { color: var(--muted); font-family: var(--cond); font-weight: 700; letter-spacing: 0.08em; }
@@ -431,16 +432,6 @@
       .briefing-severity.warning { color: var(--amber); }
       .briefing-severity.critical { color: var(--red); }
       .briefing-key { color: var(--steel); font-family: var(--cond); font-weight: 700; letter-spacing: 0.08em; }
-      @keyframes hard-alert-blink {
-        0%, 49% { border-left-color: var(--red); }
-        50%, 100% { border-left-color: transparent; }
-      }
-      @keyframes hard-label-blink {
-        0%, 49% { color: var(--red); }
-        50%, 100% { color: var(--faint); }
-      }
-      .active-alert.is-active { animation: hard-alert-blink 1s steps(1, end) infinite; }
-      .active-alert.is-active .alert-label { animation: hard-label-blink 1s steps(1, end) infinite; }
       .event-list-wrap { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 8px 16px; }
       .event-list-title {
         margin: 0 0 8px;
@@ -466,16 +457,30 @@
       .event-message { color: #c3ccd3; }
       .event-item.over .event-message { color: var(--red); }
       .event-item.log-breach .event-message { color: #ff4545; font-weight: 700; }
-      @keyframes event-panel-alarm {
-        0%, 49% { box-shadow: 0 0 0 2px #ff2d2d; }
-        50%, 100% { box-shadow: none; }
+      @keyframes synchronized-alert-flash {
+        0%, 49% { color: #ff4545; box-shadow: var(--alert-flash-on-shadow); }
+        50%, 100% { color: #ffffff; box-shadow: var(--alert-flash-off-shadow); }
       }
-      @keyframes breach-text-alarm {
-        0%, 49% { color: #ff4545; }
-        50%, 100% { color: #ffffff; }
+      .event-panel .panel-heading h2 { color: var(--text); }
+      .event-panel.alerting::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        border-radius: inherit;
+        pointer-events: none;
+        --alert-flash-on-shadow: inset 0 0 0 2px #ff2d2d;
+        --alert-flash-off-shadow: inset 0 0 0 0 transparent;
+        animation: synchronized-alert-flash 1s steps(1, end) infinite;
       }
-      .event-panel.alarm-active { animation: event-panel-alarm 1s steps(1) infinite; }
-      .event-panel.alarm-active .log-breach .event-message { animation: breach-text-alarm 1s steps(1) infinite; }
+      .event-panel.alerting .alert-label,
+      .event-panel.alerting .alert-content,
+      .event-panel.alerting .alert-acknowledge,
+      .event-panel.alerting .log-breach .event-message {
+        --alert-flash-on-shadow: none;
+        --alert-flash-off-shadow: none;
+        animation: synchronized-alert-flash 1s steps(1, end) infinite;
+      }
       .empty-log { padding: 5px 0; color: var(--faint); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; }
 
       @media (max-width: 1000px) {
@@ -730,7 +735,7 @@
       (() => {
         const TAMPA = [27.9759, -82.5332];
         const ORLANDO = [28.4312, -81.3081];
-        const MAX_TRAIL_POINTS = 300;
+        const MAX_TRAIL_POINTS = 20000;
         const MAX_EVENTS = 50;
 
         const map = L.map("map", {
@@ -804,7 +809,7 @@
 
         const aircraftIcon = L.divIcon({
           className: "aircraft-icon",
-          html: '<div class="aircraft-rotation"><svg viewBox="0 0 44 44" aria-label="Top-down eVTOL aircraft" role="img"><path d="M22 4C19.8 4 18.8 5.7 18.4 8.1L16.4 20.1 4.8 25.7C2.9 26.6 3.2 29.3 5.3 28.9L15.9 26.3 14.2 33.2 8.7 36.4C7.1 37.2 8.1 39.6 10 39L18 37 20 39.6C20.9 40.8 23.1 40.8 24 39.6L26 37 34 39C35.9 39.6 36.9 37.2 35.3 36.4L29.8 33.2 28.1 26.3 38.7 28.9C40.8 29.3 41.1 26.6 39.2 25.7L27.6 20.1 25.6 8.1C25.2 5.7 24.2 4 22 4Z"/></svg></div>',
+          html: '<div class="aircraft-rotation"><svg viewBox="0 0 44 44" aria-label="Top-down eVTOL aircraft" role="img"><path d="M22 4C19.4 4 18.2 6.2 18.2 9L17 19 2.8 26.4C1.1 27.2 2 29.5 3.8 29.1L16.4 26.8 17.6 34.2 10.2 36.6 10 38.6 19.2 37.2 20.4 40C20.8 41.1 23.2 41.1 23.6 40L24.8 37.2 34 38.6 33.8 36.6 26.4 34.2 27.6 26.8 40.2 29.1C42 29.5 42.9 27.2 41.2 26.4L27 19 25.8 9C25.8 6.2 24.6 4 22 4Z"/></svg></div>',
           iconSize: [44, 44],
           iconAnchor: [22, 22],
         });
@@ -835,6 +840,7 @@
         const eventList = document.getElementById("event-list");
         const eventPanel = document.querySelector(".event-panel");
         const activeAlert = document.getElementById("active-alert");
+        const acknowledgeLabel = activeAlert.querySelector(".alert-acknowledge");
         const briefingIdle = document.getElementById("briefing-idle");
         const briefingGenerating = document.getElementById("briefing-generating");
         const briefingDetails = document.getElementById("briefing-details");
@@ -1011,7 +1017,11 @@
           if (!breachActive || breachAcknowledged) return;
           breachAcknowledged = true;
           activeAlert.classList.remove("unacknowledged");
+          eventPanel.classList.remove("alerting");
+          eventPanel.classList.add("acknowledged");
+          acknowledgeLabel.textContent = "ACKNOWLEDGED";
           clearAlarmRepeat();
+          if (alarmBus && audioContext) alarmBus.gain.setValueAtTime(0, audioContext.currentTime);
         });
 
         function notifyBreach(message) {
@@ -1125,9 +1135,14 @@
           text.className = "event-message";
           text.textContent = message;
           item.append(time, text);
-          eventList.prepend(item);
+          const wasAtBottom =
+            eventList.scrollHeight - eventList.scrollTop - eventList.clientHeight <= 2;
+          eventList.append(item);
 
-          while (eventList.children.length > MAX_EVENTS) eventList.lastElementChild.remove();
+          while (eventList.children.length > MAX_EVENTS) eventList.firstElementChild.remove();
+          if (wasAtBottom) {
+            eventList.scrollTop = eventList.scrollHeight;
+          }
         }
 
         function updateFaultStatus(telemetry) {
@@ -1241,12 +1256,18 @@
           const hasBreach = activeBreachFaults.size > 0;
           const content = document.getElementById("alert-content");
           if (hasNewFault) {
-            breachActive = true;
-            breachAcknowledged = false;
-            activeAlert.classList.add("unacknowledged");
             showGeneratingBriefing();
-            playBreachAlarm();
-            startAlarmRepeat();
+            if (!breachActive) {
+              breachActive = true;
+              breachAcknowledged = false;
+              eventPanel.classList.remove("acknowledged");
+              acknowledgeLabel.textContent = "CLICK TO ACKNOWLEDGE";
+              activeAlert.classList.add("unacknowledged");
+            }
+            if (!breachAcknowledged) {
+              playBreachAlarm();
+              startAlarmRepeat();
+            }
           }
           if (hasBreach) {
             breachActive = true;
@@ -1255,12 +1276,14 @@
             if (breachActive) {
               breachActive = false;
               breachAcknowledged = false;
+              eventPanel.classList.remove("acknowledged");
               activeAlert.classList.remove("unacknowledged");
+              acknowledgeLabel.textContent = "CLICK TO ACKNOWLEDGE";
               clearBriefing();
             }
           }
           activeAlert.classList.toggle("is-active", hasBreach);
-          eventPanel.classList.toggle("alarm-active", hasBreach);
+          eventPanel.classList.toggle("alerting", hasBreach && !breachAcknowledged);
           const breaches = [];
           if (activeBreachFaults.has("motor_overheat")) {
             for (let index = 0; index < temperatures.length; index += 1) {
