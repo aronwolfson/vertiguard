@@ -60,7 +60,11 @@ const faultEffects = {
   gpsDriftBearingRadians: 0,
 };
 let breachEpisodeNumber = 0;
-let activeBreachEpisode = null;
+const activeBreachEpisodes = new Map([
+  ["motor_overheat", null],
+  ["battery_sag", null],
+  ["gps_drift", null],
+]);
 
 let lastUpdateMs = Date.now();
 let nextTargetChangeMs = lastUpdateMs;
@@ -140,7 +144,7 @@ function update(deltaSeconds, nowMs) {
   const maximumOverheatExtraC = Math.max(0, 125 - state.motorTempsC[2]);
   faultEffects.motorOverheatExtraC = overheatActive
     ? Math.min(maximumOverheatExtraC, faultEffects.motorOverheatExtraC + 2.5 * deltaSeconds)
-    : Math.max(0, faultEffects.motorOverheatExtraC - 12 * deltaSeconds);
+    : Math.max(0, faultEffects.motorOverheatExtraC - 75 * deltaSeconds);
   faultEffects.motorRpmMultiplier = overheatActive
     ? 0.88
     : approach(faultEffects.motorRpmMultiplier, 1, 1.5, deltaSeconds);
@@ -152,10 +156,10 @@ function update(deltaSeconds, nowMs) {
       : approach(faultEffects.batteryDrainMultiplier, 1, 2, deltaSeconds);
   faultEffects.batteryVoltageSagV = activeFaults.has("battery_sag")
     ? 25
-    : approach(faultEffects.batteryVoltageSagV, 0, 1.5, deltaSeconds);
+    : faultEffects.batteryVoltageSagV * Math.exp(-10 * deltaSeconds);
   faultEffects.gpsDriftMeters = activeFaults.has("gps_drift")
     ? Math.min(300, faultEffects.gpsDriftMeters + 6 * deltaSeconds)
-    : Math.max(0, faultEffects.gpsDriftMeters - 75 * deltaSeconds);
+    : Math.max(0, faultEffects.gpsDriftMeters - 750 * deltaSeconds);
   state.batteryPct = Math.max(
     0,
     state.batteryPct - 0.012 * faultEffects.batteryDrainMultiplier * deltaSeconds,
@@ -209,6 +213,35 @@ function broadcast(message) {
 }
 
 function buildTemplateBriefing(snapshot) {
+  if (snapshot.fault === "battery_sag") {
+    const deficit = snapshot.expected_voltage - snapshot.battery_voltage;
+    const severity = deficit >= 20 || snapshot.battery_pct < 20 ? "CRITICAL" : "WARNING";
+    const timeBudget =
+      snapshot.battery_pct < 20
+        ? "Land within 3 minutes"
+        : snapshot.battery_pct < 40
+          ? "Land within 6 minutes"
+          : "Land within 10 minutes";
+
+    return {
+      severity,
+      summary: `Battery voltage is ${snapshot.battery_voltage.toFixed(1)}V, ${deficit.toFixed(1)}V below expected; charge is ${snapshot.battery_pct.toFixed(1)}%.`,
+      recommended_action: "Reduce electrical load and begin a controlled landing using the approved battery emergency checklist.",
+      time_budget: timeBudget,
+    };
+  }
+
+  if (snapshot.fault === "gps_drift") {
+    const severity = snapshot.gps_drift_m > 200 ? "CRITICAL" : "WARNING";
+
+    return {
+      severity,
+      summary: `GPS position drift is ${snapshot.gps_drift_m}m; treat reported position as unreliable.`,
+      recommended_action: "Treat GPS position as unreliable; use alternate navigation and approved return procedures.",
+      time_budget: severity === "CRITICAL" ? "Resolve within 5 minutes" : "Resolve within 10 minutes",
+    };
+  }
+
   const temperature = snapshot.temp_c;
   const severity = temperature >= 110 ? "CRITICAL" : "WARNING";
   const recommendedAction =
@@ -266,7 +299,10 @@ async function createOperatorBriefing(snapshot) {
     const prompt = [
       "You are an aviation operations safety analyst. Given the snapshot, return ONLY JSON with this shape:",
       '{"severity":"WARNING" or "CRITICAL","summary":"plain-English what is wrong, max 25 words","recommended_action":"imperative instruction, max 20 words","time_budget":"like Land within 6 minutes"}',
-      "Use these time-budget guides: 100–110°C ≈ 8 minutes, 110–120°C ≈ 5 minutes, above 120°C ≈ 2 minutes. Do not return markdown or additional properties.",
+      "For motor_overheat, use WARNING below 110°C, CRITICAL at 110°C or above; time budgets are 100–110°C ≈ 8 minutes, 110–120°C ≈ 5 minutes, above 120°C ≈ 2 minutes.",
+      "For battery_sag, use CRITICAL when the voltage deficit is 20V or more or battery_pct is under 20; otherwise WARNING. Drive the time budget by remaining battery: under 20% ≈ land within 3 minutes, under 40% ≈ 6 minutes, otherwise ≈ 10 minutes.",
+      "For gps_drift, use WARNING at 100–200m drift and CRITICAL above 200m. Direct the operator to treat GPS position as unreliable and fall back to alternate navigation / return procedures; use Resolve within 10 minutes for WARNING or Resolve within 5 minutes for CRITICAL.",
+      "Do not return markdown or additional properties.",
       `Snapshot: ${JSON.stringify(snapshot)}`,
     ].join("\n");
     const models = ["gemini-3.6-flash", "gemini-flash-latest"];
@@ -321,29 +357,52 @@ async function createOperatorBriefing(snapshot) {
 
 function observeBreach(telemetry) {
   const motorIndex = telemetry.motor_temps_c.findIndex((temperature) => temperature > 100);
-  if (motorIndex === -1) {
-    activeBreachEpisode = null;
-    return;
-  }
-  if (activeBreachEpisode !== null) return;
-
-  const episode = ++breachEpisodeNumber;
-  activeBreachEpisode = episode;
-  const snapshot = {
-    motor: motorIndex + 1,
-    temp_c: telemetry.motor_temps_c[motorIndex],
-    rpm: telemetry.motor_rpm[motorIndex],
-    battery_pct: telemetry.battery_pct,
-    altitude_ft: telemetry.altitude_ft,
-    airspeed_kt: telemetry.airspeed_kt,
-    wind_kt: telemetry.wind_kt,
+  const expectedVoltage = 330 + telemetry.battery_pct * 0.75;
+  const conditions = {
+    motor_overheat: motorIndex !== -1,
+    battery_sag: telemetry.battery_voltage < expectedVoltage - 10,
+    gps_drift: telemetry.gps_drift_m > 100,
   };
 
-  void createOperatorBriefing(snapshot).then(({ briefing, source }) => {
-    console.log(`Operator briefing source: ${source}`);
-    if (activeBreachEpisode !== episode) return;
-    broadcast({ type: "briefing", motor: snapshot.motor, briefing });
-  });
+  for (const [fault, isActive] of Object.entries(conditions)) {
+    if (!isActive) {
+      activeBreachEpisodes.set(fault, null);
+      continue;
+    }
+    if (activeBreachEpisodes.get(fault) !== null) continue;
+
+    const episode = ++breachEpisodeNumber;
+    activeBreachEpisodes.set(fault, episode);
+    const snapshot = {
+      fault,
+      battery_pct: telemetry.battery_pct,
+      altitude_ft: telemetry.altitude_ft,
+      airspeed_kt: telemetry.airspeed_kt,
+    };
+
+    if (fault === "motor_overheat") {
+      snapshot.motor = motorIndex + 1;
+      snapshot.temp_c = telemetry.motor_temps_c[motorIndex];
+      snapshot.rpm = telemetry.motor_rpm[motorIndex];
+      snapshot.wind_kt = telemetry.wind_kt;
+    } else if (fault === "battery_sag") {
+      snapshot.battery_voltage = telemetry.battery_voltage;
+      snapshot.expected_voltage = expectedVoltage;
+    } else {
+      snapshot.gps_drift_m = telemetry.gps_drift_m;
+    }
+
+    void createOperatorBriefing(snapshot).then(({ briefing, source }) => {
+      console.log(`Operator briefing source: ${source} [${fault}]`);
+      if (activeBreachEpisodes.get(fault) !== episode) return;
+      broadcast({
+        type: "briefing",
+        fault,
+        ...(fault === "motor_overheat" ? { motor: snapshot.motor } : {}),
+        briefing,
+      });
+    });
+  }
 }
 
 setInterval(() => {

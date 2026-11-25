@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0a0b0c">
-    <title>VERTIGUARD — Tampa Operations</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 2 38 20 20 38 2 20Z' fill='none' stroke='%23d7dce0' stroke-width='2'/%3E%3Cpath d='m13 13 7 15 7-15' fill='none' stroke='%23d7dce0' stroke-width='3.5' stroke-linecap='square' stroke-linejoin='miter'/%3E%3Ccircle cx='20' cy='2' r='2.5' fill='%23d7dce0'/%3E%3C/svg%3E">
+    <title>VERTIGUARD</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='%23d7dce0' fill-rule='evenodd' d='M20 2 38 20 20 38 2 20Z M12 10h6l2 10 2-10h6l-6 21h-4Z'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -39,8 +39,11 @@
 
       * { box-sizing: border-box; }
 
+      html, body {
+        height: 100%;
+      }
+
       body {
-        height: 100vh;
         min-width: 360px;
         margin: 0;
         display: flex;
@@ -157,14 +160,15 @@
       main {
         width: 100%;
         max-width: 1800px;
+        height: calc(100vh - 56px);
         min-height: 0;
-        flex: 1;
+        flex: 0 0 auto;
         display: flex;
         flex-direction: column;
         margin: 0 auto;
-        padding: 12px 20px 14px;
+        padding: 0 20px;
       }
-      .overview { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 350px); gap: 14px; }
+      .overview { min-height: 0; flex: 1; display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) minmax(360px, 430px); gap: 14px; }
       .panel {
         min-width: 0;
         overflow: hidden;
@@ -272,14 +276,12 @@
       .aircraft-icon { background: transparent; border: 0; }
       .aircraft-rotation { width: 44px; height: 44px; transform: rotate(0deg); }
       .aircraft-rotation svg { display: block; width: 100%; height: 100%; overflow: visible; }
-      .aircraft-rotation line, .aircraft-rotation path, .aircraft-rotation circle {
-        fill: none;
-        stroke: #d7dce0;
+      .aircraft-rotation path {
+        fill: #d7dce0;
+        stroke: #0a0b0c;
         stroke-width: 2;
-        stroke-linecap: square;
-        stroke-linejoin: miter;
+        stroke-linejoin: round;
       }
-      .aircraft-rotation circle { fill: #0a0b0c; }
       .vertiport-icon { background: transparent; border: 0; }
       .vertiport-icon span {
         width: 22px;
@@ -308,7 +310,7 @@
       .leaflet-tooltip::before { border-top-color: var(--border-strong); }
 
       /* ---------- telemetry cards ---------- */
-      .telemetry-column { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+      .telemetry-column { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 14px; }
       .values-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; }
       .value-card {
         min-height: 66px;
@@ -386,7 +388,7 @@
       .motor-rpm { margin-top: 4px; color: var(--muted); font-family: var(--mono); font-size: 9px; }
 
       /* ---------- events ---------- */
-      .event-panel { min-height: 0; flex: 0 0 154px; display: flex; flex-direction: column; margin-top: 12px; }
+      .event-panel { min-height: 0; flex: 0 0 194px; display: flex; flex-direction: column; margin-top: 12px; }
       .event-layout { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(250px, 0.8fr) minmax(0, 2fr); }
       .active-alert { padding: 14px 16px; border-right: 1px solid var(--border); border-left: 2px solid transparent; }
       .alert-label {
@@ -420,8 +422,8 @@
       .active-alert.is-active { border-left-color: var(--red); background: #1c0e0f; }
       .active-alert.is-active .alert-label { color: var(--red); }
       .active-alert.is-active .alert-content { min-height: 0; align-items: flex-start; color: var(--text); font-weight: 600; }
-      .briefing-panel { min-height: 0; flex: 0 1 190px; display: flex; flex-direction: column; }
-      .operator-briefing { min-height: 96px; flex: 1; overflow: auto; padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 13px; line-height: 1.55; }
+      .briefing-panel { min-height: 0; flex: 0 1 250px; display: flex; flex-direction: column; }
+      .operator-briefing { min-height: 150px; flex: 1; overflow: auto; padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 13px; line-height: 1.55; }
       .operator-briefing [hidden] { display: none; }
       .briefing-generating { color: var(--muted); font-family: var(--cond); font-weight: 700; letter-spacing: 0.08em; }
       .briefing-details { display: grid; gap: 2px; overflow-wrap: anywhere; }
@@ -477,7 +479,7 @@
       .empty-log { padding: 5px 0; color: var(--faint); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; }
 
       @media (max-width: 1000px) {
-        main { padding: 10px 14px; }
+        main { padding: 0 14px; }
         .overview { grid-template-columns: minmax(0, 1fr) minmax(280px, 310px); gap: 12px; }
         .topbar { padding: 0 14px; }
       }
@@ -545,15 +547,9 @@
         body { height: auto; min-height: 100vh; overflow-y: auto; }
         .topbar { height: auto; min-height: 56px; flex-basis: auto; flex-wrap: wrap; gap: 8px; padding-top: 8px; padding-bottom: 8px; }
         .header-right { flex-wrap: wrap; gap: 6px; }
-        main { flex: 0 0 auto; }
+        main { height: auto; flex: 0 0 auto; }
         .overview { flex: 0 0 auto; grid-template-columns: minmax(0, 1fr); }
         .map-column, .telemetry-column { min-width: 0; }
-      }
-
-      @media (min-width: 901px) and (max-height: 950px) {
-        body { height: auto; min-height: 100vh; overflow-y: auto; }
-        main { flex: 0 0 auto; }
-        .overview { flex: 0 0 auto; }
       }
     </style>
   </head>
@@ -562,14 +558,11 @@
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 40 40" focusable="false">
-            <path d="M20 2 38 20 20 38 2 20Z" fill="none" stroke="#d7dce0" stroke-width="2"/>
-            <path d="m13 13 7 15 7-15" fill="none" stroke="#d7dce0" stroke-width="3.5" stroke-linecap="square" stroke-linejoin="miter"/>
-            <circle cx="20" cy="2" r="2.5" fill="#d7dce0"/>
+            <path d="M20 2 38 20 20 38 2 20Z M12 10h6l2 10 2-10h6l-6 21h-4Z" fill="#d7dce0" fill-rule="evenodd"/>
           </svg>
         </div>
         <div>
-          <div class="eyebrow">Fleet Operations</div>
-          <h1>VertiGuard — Tampa Operations</h1>
+          <h1>VertiGuard</h1>
         </div>
       </div>
       <div class="header-right">
@@ -633,7 +626,6 @@
           <section class="panel values-panel" aria-labelledby="values-heading">
             <div class="panel-heading">
               <div class="heading-title"><h2 id="values-heading">Systems</h2></div>
-              <span class="section-kicker">VG-01</span>
             </div>
             <div class="values-grid">
               <article class="value-card">
@@ -693,7 +685,6 @@
           <section class="panel briefing-panel" aria-label="Operator briefing">
             <div class="panel-heading">
               <div class="heading-title"><h2>Operator briefing</h2></div>
-              <span class="section-kicker">GEMINI</span>
             </div>
             <div id="operator-briefing" class="operator-briefing" aria-live="polite">
               <div id="briefing-idle">NO ACTIVE BRIEFING — ALL SYSTEMS NOMINAL</div>
@@ -813,7 +804,7 @@
 
         const aircraftIcon = L.divIcon({
           className: "aircraft-icon",
-          html: '<div class="aircraft-rotation"><svg viewBox="0 0 44 44" aria-label="Top-down eVTOL aircraft" role="img"><path d="M22 4 25.5 12V32L22 40 18.5 32V12Z"/><line x1="5" y1="15" x2="39" y2="15"/><line x1="8" y1="11" x2="8" y2="19"/><line x1="36" y1="11" x2="36" y2="19"/><line x1="5" y1="29" x2="39" y2="29"/><line x1="8" y1="25" x2="8" y2="33"/><line x1="36" y1="25" x2="36" y2="33"/><circle cx="8" cy="11" r="3"/><circle cx="36" cy="11" r="3"/><circle cx="8" cy="33" r="3"/><circle cx="36" cy="33" r="3"/></svg></div>',
+          html: '<div class="aircraft-rotation"><svg viewBox="0 0 44 44" aria-label="Top-down eVTOL aircraft" role="img"><path d="M22 4C19.8 4 18.8 5.7 18.4 8.1L16.4 20.1 4.8 25.7C2.9 26.6 3.2 29.3 5.3 28.9L15.9 26.3 14.2 33.2 8.7 36.4C7.1 37.2 8.1 39.6 10 39L18 37 20 39.6C20.9 40.8 23.1 40.8 24 39.6L26 37 34 39C35.9 39.6 36.9 37.2 35.3 36.4L29.8 33.2 28.1 26.3 38.7 28.9C40.8 29.3 41.1 26.6 39.2 25.7L27.6 20.1 25.6 8.1C25.2 5.7 24.2 4 22 4Z"/></svg></div>',
           iconSize: [44, 44],
           iconAnchor: [22, 22],
         });
@@ -871,6 +862,7 @@
           "Notification" in window &&
           Notification.permission === "granted";
         let previousActiveFaults = [];
+        const activeBreachFaults = new Set();
         let gpsWarningLogged = false;
         let breachActive = false;
         let breachAcknowledged = false;
@@ -1086,8 +1078,9 @@
         function receiveBriefing(message) {
           const briefing = message.briefing;
           if (
-            !breachActive ||
-            !Number.isInteger(message.motor) ||
+            !Object.hasOwn(faultLabels, message.fault) ||
+            !activeBreachFaults.has(message.fault) ||
+            (message.fault === "motor_overheat" && !Number.isInteger(message.motor)) ||
             !briefing ||
             !["WARNING", "CRITICAL"].includes(briefing.severity) ||
             typeof briefing.summary !== "string" ||
@@ -1106,9 +1099,13 @@
           briefingSummary.textContent = briefing.summary;
           briefingAction.textContent = briefing.recommended_action;
           briefingTimeBudget.textContent = briefing.time_budget;
+          const motorLabel =
+            message.fault === "motor_overheat"
+              ? ` — MOTOR ${String(message.motor).padStart(2, "0")}`
+              : "";
           addEvent(
             new Date().toISOString(),
-            `BRIEFING RECEIVED — MOTOR ${String(message.motor).padStart(2, "0")}`,
+            `BRIEFING RECEIVED — ${faultLabels[message.fault]}${motorLabel}`,
             false,
           );
         }
@@ -1181,7 +1178,6 @@
         }
 
         function updateMotors(telemetry) {
-          const breaches = [];
           for (let index = 0; index < motorCards.length; index += 1) {
             const temperature = Number(telemetry.motor_temps_c[index]);
             const rpm = Number(telemetry.motor_rpm[index]);
@@ -1193,10 +1189,8 @@
             card.querySelector(".motor-rpm").textContent = Number.isFinite(rpm) ? `${Math.round(rpm).toLocaleString()} RPM` : "— RPM";
             card.querySelector(".motor-state").textContent = breached ? "OVER TEMP" : temperature > 90 ? "ELEVATED" : "NOMINAL";
 
-            if (breached) breaches.push(`MOTOR ${String(index + 1).padStart(2, "0")} · ${temperature.toFixed(1)}°C`);
             if (breached !== previousBreaches[index]) {
               const label = `MOTOR ${String(index + 1).padStart(2, "0")}`;
-              const breachMessage = `${label} OVER TEMP — ${temperature.toFixed(1)}°C`;
               addEvent(
                 telemetry.timestamp,
                 breached
@@ -1204,32 +1198,85 @@
                   : `${label} RETURNED BELOW 100°C (${temperature.toFixed(1)}°C)`,
                 breached,
               );
-              if (breached) {
-                notifyBreach(breachMessage);
-              }
               previousBreaches[index] = breached;
             }
           }
 
-          const hasBreach = breaches.length > 0;
+          updateBreachStatus(telemetry);
+        }
+
+        function updateBreachStatus(telemetry) {
+          const temperatures = Array.isArray(telemetry.motor_temps_c)
+            ? telemetry.motor_temps_c.map(Number)
+            : [];
+          const batteryPct = Number(telemetry.battery_pct);
+          const batteryVoltage = Number(telemetry.battery_voltage);
+          const expectedVoltage = 330 + batteryPct * 0.75;
+          const driftMeters = Number(telemetry.gps_drift_m);
+          const currentFaults = new Set();
+          if (temperatures.some((temperature) => temperature > 100)) {
+            currentFaults.add("motor_overheat");
+          }
+          if (
+            Number.isFinite(batteryPct) &&
+            Number.isFinite(batteryVoltage) &&
+            batteryVoltage < expectedVoltage - 10
+          ) {
+            currentFaults.add("battery_sag");
+          }
+          if (Number.isFinite(driftMeters) && driftMeters > 100) {
+            currentFaults.add("gps_drift");
+          }
+
+          let hasNewFault = false;
+          for (const fault of currentFaults) {
+            if (!activeBreachFaults.has(fault)) {
+              hasNewFault = true;
+              notifyBreach(`${faultLabels[fault]} — OPERATOR ACTION REQUIRED`);
+            }
+          }
+          activeBreachFaults.clear();
+          for (const fault of currentFaults) activeBreachFaults.add(fault);
+
+          const hasBreach = activeBreachFaults.size > 0;
           const content = document.getElementById("alert-content");
-          if (hasBreach && !breachActive) {
-            breachAcknowledged = false;
+          if (hasNewFault) {
             breachActive = true;
+            breachAcknowledged = false;
             activeAlert.classList.add("unacknowledged");
             showGeneratingBriefing();
             playBreachAlarm();
             startAlarmRepeat();
-          } else if (!hasBreach && breachActive) {
-            breachActive = false;
+          }
+          if (hasBreach) {
+            breachActive = true;
+          } else {
             clearAlarmRepeat();
-            breachAcknowledged = false;
-            activeAlert.classList.remove("unacknowledged");
-            clearBriefing();
+            if (breachActive) {
+              breachActive = false;
+              breachAcknowledged = false;
+              activeAlert.classList.remove("unacknowledged");
+              clearBriefing();
+            }
           }
           activeAlert.classList.toggle("is-active", hasBreach);
           eventPanel.classList.toggle("alarm-active", hasBreach);
-          content.textContent = breaches.length > 0 ? breaches.join("  /  ") : "NO ACTIVE BREACH — ALL MOTORS WITHIN LIMITS";
+          const breaches = [];
+          if (activeBreachFaults.has("motor_overheat")) {
+            for (let index = 0; index < temperatures.length; index += 1) {
+              if (temperatures[index] > 100) {
+                breaches.push(`MOTOR ${String(index + 1).padStart(2, "0")} · ${temperatures[index].toFixed(1)}°C`);
+              }
+            }
+          }
+          if (activeBreachFaults.has("battery_sag")) {
+            breaches.push(`BATTERY SAG · ${(expectedVoltage - batteryVoltage).toFixed(1)}V DEFICIT`);
+          }
+          if (activeBreachFaults.has("gps_drift")) {
+            breaches.push(`GPS DRIFT · ${Math.round(driftMeters)}M`);
+          }
+          content.textContent =
+            breaches.length > 0 ? breaches.join("  /  ") : "NO ACTIVE BREACH — ALL MOTORS WITHIN LIMITS";
         }
 
         function updateDashboard(telemetry) {
